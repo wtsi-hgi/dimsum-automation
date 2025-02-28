@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"golang.org/x/oauth2/jwt"
+	"google.golang.org/api/option"
 	"google.golang.org/api/sheets/v4"
 )
 
@@ -58,10 +59,11 @@ func main() {
 		log.Fatalf("Unable to load credentials: %v", err)
 	}
 
-	client := conf.Client(context.Background())
+	ctx := context.Background()
+	client := conf.Client(ctx)
 
 	// Create a service object for Google sheets
-	srv, err := sheets.New(client)
+	srv, err := sheets.NewService(ctx, option.WithHTTPClient(client))
 	if err != nil {
 		log.Fatalf("Unable to retrieve Sheets client: %v", err)
 	}
