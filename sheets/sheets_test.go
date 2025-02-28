@@ -87,6 +87,9 @@ func TestSheets(t *testing.T) {
 				So(err, ShouldBeNil)
 				So(len(cols), ShouldBeGreaterThan, 0)
 				So(len(cols[0]), ShouldEqual, 4)
+
+				cols, err = sheetL.Columns("library_id", "foo")
+				So(err, ShouldNotBeNil)
 			})
 		})
 
