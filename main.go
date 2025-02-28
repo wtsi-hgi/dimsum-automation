@@ -30,7 +30,6 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
@@ -55,26 +54,12 @@ func main() {
 		log.Fatalf("unable to retrieve Sheets client: %v", err)
 	}
 
-	sheet, err := sheets.Read(spreadsheetId, "Libraries")
+	metadata, err := sheets.DimSumMetaData(spreadsheetId)
 	if err != nil {
-		log.Fatalf("unable to retrieve data from sheet: %v", err)
+		log.Fatal(err)
 	}
 
-	if len(sheet.Rows) == 0 {
-		fmt.Println("no data found")
-	} else {
-		rows, err := sheet.Columns(
-			"library_id",
-			"dimsum_wt",
-			"dimsum_cutadapt5First",
-			"dimsum_cutadapt5Second",
-		)
-		if err != nil {
-			log.Fatal(err)
-		}
-
-		for _, row := range rows {
-			fmt.Printf("%s\n", strings.Join(row, ", "))
-		}
+	for sample, meta := range metadata {
+		fmt.Printf("%s, %d, %s, %s\n", sample, meta.Replicate, meta.LibraryID, meta.Cutadapt5First)
 	}
 }

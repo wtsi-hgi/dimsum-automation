@@ -89,5 +89,23 @@ func TestSheets(t *testing.T) {
 				So(len(cols[0]), ShouldEqual, 4)
 			})
 		})
+
+		Convey("Which you can use to retrieve the merged data needed for DimSum", func() {
+			samples, err := sheets.DimSumMetaData(spreadsheetID)
+			So(err, ShouldBeNil)
+			So(len(samples), ShouldBeGreaterThan, 0)
+			So(samples["AM762abstart5"], ShouldResemble, MetaData{
+				Selection: 1,
+				Replicate: 2,
+				Time:      34.5,
+				OD:        1.27,
+				LibraryMetaData: LibraryMetaData{
+					LibraryID:       "762_abundance",
+					Wt:              "AAGGTCATGGAAATAAAGCTGATCAAGGGCCCAAAAGGACTTGGGTTCTCTATCGCAGGCGGAGTTGGCAACCAGCATATCCCCGGGGATAACTCAATCTACGTAACCAAAATTATCGAAGGCGGGGCAGCTCATAAGGATGGTCGACTT",
+					Cutadapt5First:  "GGGAGGTGGAGCTAGC",
+					Cutadapt5Second: "GCCAAGATTTTATCTCCAATTTG",
+				},
+			})
+		})
 	})
 }
