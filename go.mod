@@ -3,6 +3,7 @@ module github.com/wtsi-hgi/dimsum-automation
 go 1.23.5
 
 require (
+	github.com/smartystreets/goconvey v1.8.1
 	golang.org/x/oauth2 v0.27.0
 	google.golang.org/api v0.223.0
 )
@@ -18,6 +19,9 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/googleapis/enterprise-certificate-proxy v0.3.4 // indirect
 	github.com/googleapis/gax-go/v2 v2.14.1 // indirect
+	github.com/gopherjs/gopherjs v1.17.2 // indirect
+	github.com/jtolds/gls v4.20.0+incompatible // indirect
+	github.com/smarty/assertions v1.16.0 // indirect
 	go.opentelemetry.io/auto/sdk v1.1.0 // indirect
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.59.0 // indirect
 	go.opentelemetry.io/otel v1.34.0 // indirect

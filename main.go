@@ -1,91 +1,70 @@
+/*******************************************************************************
+ * Copyright (c) 2025 Genome Research Ltd.
+ *
+ * Authors:
+ *	- Sendu Bala <sb10@sanger.ac.uk>
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining
+ * a copy of this software and associated documentation files (the
+ * "Software"), to deal in the Software without restriction, including
+ * without limitation the rights to use, copy, modify, merge, publish,
+ * distribute, sublicense, and/or sell copies of the Software, and to
+ * permit persons to whom the Software is furnished to do so, subject to
+ * the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included
+ * in all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+ * CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+ * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+ * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ ******************************************************************************/
+
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+	"strings"
 
-	"golang.org/x/oauth2/jwt"
-	"google.golang.org/api/option"
-	"google.golang.org/api/sheets/v4"
+	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
-
-type ServiceCredentials struct {
-	Type                    string `json:"type"`
-	ProjectID               string `json:"project_id"`
-	PrivateKeyID            string `json:"private_key_id"`
-	PrivateKey              string `json:"private_key"`
-	ClientEmail             string `json:"client_email"`
-	ClientID                string `json:"client_id"`
-	AuthURI                 string `json:"auth_uri"`
-	TokenURI                string `json:"token_uri"`
-	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url"`
-	ClientX509CertURL       string `json:"client_x509_cert_url"`
-}
-
-func loadCredentials(filepath string) (*jwt.Config, error) {
-	data, err := os.ReadFile(filepath)
-	if err != nil {
-		return nil, fmt.Errorf("reading credentials file: %v", err)
-	}
-
-	var creds ServiceCredentials
-	if err := json.Unmarshal(data, &creds); err != nil {
-		return nil, fmt.Errorf("parsing credentials: %v", err)
-	}
-
-	conf := &jwt.Config{
-		Email:        creds.ClientEmail,
-		PrivateKey:   []byte(creds.PrivateKey),
-		PrivateKeyID: creds.PrivateKeyID,
-		TokenURL:     creds.TokenURI,
-		Scopes: []string{
-			"https://www.googleapis.com/auth/spreadsheets.readonly",
-		},
-	}
-
-	return conf, nil
-}
 
 func main() {
 	if len(os.Args) < 2 {
-		log.Fatal("Please provide the path to credentials.json as an argument")
+		log.Fatal("provide the path to credentials.json as an argument")
 	}
 
-	conf, err := loadCredentials(os.Args[1])
+	spreadsheetId := os.Getenv("DIMSUM_AUTOMATION_SPREADSHEETID")
+	if spreadsheetId == "" {
+		log.Fatal("set DIMSUM_AUTOMATION_SPREADSHEETID to sheet ID")
+	}
+
+	sc, err := sheets.ServiceCredentialsFromFile(os.Args[1])
 	if err != nil {
-		log.Fatalf("Unable to load credentials: %v", err)
+		log.Fatalf("unable to load credentials: %v", err)
 	}
 
-	ctx := context.Background()
-	client := conf.Client(ctx)
-
-	// Create a service object for Google sheets
-	srv, err := sheets.NewService(ctx, option.WithHTTPClient(client))
+	sheets, err := sheets.New(sc)
 	if err != nil {
-		log.Fatalf("Unable to retrieve Sheets client: %v", err)
+		log.Fatalf("unable to retrieve Sheets client: %v", err)
 	}
 
-	spreadsheetId := "1hIR9_RjcCQU-9-q5JatsMTrqJYi063eiKlbRKMQbDAc"
-
-	// Define the Sheet Name and fields to select
-	readRange := "Libraries!A2:B"
-
-	// Pull the data from the sheet
-	resp, err := srv.Spreadsheets.Values.Get(spreadsheetId, readRange).Do()
+	sheet, err := sheets.Read(spreadsheetId, "Libraries")
 	if err != nil {
-		log.Fatalf("Unable to retrieve data from sheet: %v", err)
+		log.Fatalf("unable to retrieve data from sheet: %v", err)
 	}
 
-	// Display pulled data
-	if len(resp.Values) == 0 {
-		fmt.Println("No data found.")
+	if len(sheet.Rows) == 0 {
+		fmt.Println("no data found")
 	} else {
-		fmt.Println("Name, Major:")
-		for _, row := range resp.Values {
-			fmt.Printf("%s, %s\n", row[0], row[1])
+		for _, row := range sheet.Rows {
+			fmt.Printf("%s\n", strings.Join(row, ", "))
 		}
 	}
 }
