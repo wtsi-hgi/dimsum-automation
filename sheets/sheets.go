@@ -34,6 +34,12 @@ import (
 	googleSheets "google.golang.org/api/sheets/v4"
 )
 
+type Error string
+
+func (e Error) Error() string { return string(e) }
+
+const ErrColumnNotFound = Error("column not found in sheet")
+
 // Sheets allows the retrival of sheets from Google docs.
 type Sheets struct {
 	srv *googleSheets.Service
@@ -56,6 +62,8 @@ func New(sc *ServiceCredentials) (*Sheets, error) {
 type Sheet struct {
 	ColumnHeaders []string
 	Rows          [][]string
+
+	headerLookup map[string]int
 }
 
 // Read retrieves the contents of a given document and sheet within that
@@ -73,11 +81,15 @@ func (s *Sheets) Read(docID, sheetName string) (*Sheet, error) {
 
 	var header []string
 
+	headerLookup := make(map[string]int, len(valRange.Values[0]))
 	rows := make([][]string, len(valRange.Values)-1)
 
 	for i, row := range valRange.Values {
 		if i == 0 {
 			header = rowToStringSlice(row)
+			for i, head := range header {
+				headerLookup[head] = i
+			}
 		} else {
 			rows[i-1] = rowToStringSlice(row)
 		}
@@ -86,6 +98,7 @@ func (s *Sheets) Read(docID, sheetName string) (*Sheet, error) {
 	return &Sheet{
 		ColumnHeaders: header,
 		Rows:          rows,
+		headerLookup:  headerLookup,
 	}, nil
 }
 
@@ -97,4 +110,35 @@ func rowToStringSlice(in []any) []string {
 	}
 
 	return out
+}
+
+// Columns returns a slice for each row in the sheet (like Rows property), but
+// each slice only has values from the columns with the given column headers.
+//
+// Will return an error if given cols are not amongst ColumnHeaders.
+func (s *Sheet) Columns(cols ...string) ([][]string, error) {
+	colIndexes := make([]int, len(cols))
+
+	for i, col := range cols {
+		colIndex, ok := s.headerLookup[col]
+		if !ok {
+			return nil, ErrColumnNotFound
+		}
+
+		colIndexes[i] = colIndex
+	}
+
+	rows := make([][]string, len(s.Rows))
+
+	for i, wholeRow := range s.Rows {
+		row := make([]string, len(colIndexes))
+
+		for j, colIndex := range colIndexes {
+			row[j] = wholeRow[colIndex]
+		}
+
+		rows[i] = row
+	}
+
+	return rows, nil
 }

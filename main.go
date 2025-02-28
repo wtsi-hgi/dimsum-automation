@@ -63,7 +63,17 @@ func main() {
 	if len(sheet.Rows) == 0 {
 		fmt.Println("no data found")
 	} else {
-		for _, row := range sheet.Rows {
+		rows, err := sheet.Columns(
+			"library_id",
+			"dimsum_wt",
+			"dimsum_cutadapt5First",
+			"dimsum_cutadapt5Second",
+		)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, row := range rows {
 			fmt.Printf("%s\n", strings.Join(row, ", "))
 		}
 	}
