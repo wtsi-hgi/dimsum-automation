@@ -24,57 +24,25 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ******************************************************************************/
 
-package main
+package mlwh
 
 import (
-	"fmt"
-	"log"
+	"net"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/wtsi-hgi/dimsum-automation/config"
-	"github.com/wtsi-hgi/dimsum-automation/mlwh"
-	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
-const sponsor = "Ben Lehner"
+const sqlNetwork = "tcp"
 
-func main() {
-	c, err := config.FromEnv()
-	if err != nil {
-		log.Fatal(err)
-	}
+func MySQLConfigFromConfig(c *config.Config) *mysql.Config {
+	mc := mysql.NewConfig()
+	mc.User = c.User
+	mc.Passwd = c.Password
+	mc.Net = sqlNetwork
+	mc.Addr = net.JoinHostPort(c.Host, c.Port)
+	mc.DBName = c.DBName
+	mc.ParseTime = true
 
-	sc, err := sheets.ServiceCredentialsFromConfig(c)
-	if err != nil {
-		log.Fatalf("unable to load credentials: %v", err)
-	}
-
-	sheets, err := sheets.New(sc)
-	if err != nil {
-		log.Fatalf("unable to retrieve Sheets client: %v", err)
-	}
-
-	metadata, err := sheets.DimSumMetaData(c.SheetID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("All samples from google sheet (sample name, replicate, library id, cutadapt5first):\n")
-	for sample, meta := range metadata {
-		fmt.Printf("%s, %d, %s, %s\n", sample, meta.Replicate, meta.LibraryID, meta.Cutadapt5First)
-	}
-
-	db, err := mlwh.New(mlwh.MySQLConfigFromConfig(c))
-	if err != nil {
-		log.Fatalf("unable to connect to MLWH: %v", err)
-	}
-
-	samples, err := db.SamplesForSponsor(sponsor)
-	if err != nil {
-		log.Fatalf("unable to get samples: %v", err)
-	}
-
-	fmt.Printf("\nExample samples found in MLWH (sample name, id, study name):\n")
-	for _, sample := range samples[0:5] {
-		fmt.Printf("%s, %s, %s\n", sample.SampleName, sample.SampleID, sample.StudyName)
-	}
+	return mc
 }

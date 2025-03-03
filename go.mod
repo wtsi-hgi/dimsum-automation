@@ -3,6 +3,7 @@ module github.com/wtsi-hgi/dimsum-automation
 go 1.23.5
 
 require (
+	github.com/go-sql-driver/mysql v1.9.0
 	github.com/joho/godotenv v1.5.1
 	github.com/smartystreets/goconvey v1.8.1
 	golang.org/x/oauth2 v0.27.0
@@ -13,6 +14,7 @@ require (
 	cloud.google.com/go/auth v0.15.0 // indirect
 	cloud.google.com/go/auth/oauth2adapt v0.2.7 // indirect
 	cloud.google.com/go/compute/metadata v0.6.0 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
