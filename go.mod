@@ -3,6 +3,7 @@ module github.com/wtsi-hgi/dimsum-automation
 go 1.23.5
 
 require (
+	github.com/joho/godotenv v1.5.1
 	github.com/smartystreets/goconvey v1.8.1
 	golang.org/x/oauth2 v0.27.0
 	google.golang.org/api v0.223.0

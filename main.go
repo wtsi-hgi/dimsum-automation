@@ -29,22 +29,18 @@ package main
 import (
 	"fmt"
 	"log"
-	"os"
 
+	"github.com/wtsi-hgi/dimsum-automation/config"
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
 func main() {
-	if len(os.Args) < 2 {
-		log.Fatal("provide the path to credentials.json as an argument")
+	c, err := config.FromEnv()
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	spreadsheetId := os.Getenv("DIMSUM_AUTOMATION_SPREADSHEETID")
-	if spreadsheetId == "" {
-		log.Fatal("set DIMSUM_AUTOMATION_SPREADSHEETID to sheet ID")
-	}
-
-	sc, err := sheets.ServiceCredentialsFromFile(os.Args[1])
+	sc, err := sheets.ServiceCredentialsFromConfig(c)
 	if err != nil {
 		log.Fatalf("unable to load credentials: %v", err)
 	}
@@ -54,7 +50,7 @@ func main() {
 		log.Fatalf("unable to retrieve Sheets client: %v", err)
 	}
 
-	metadata, err := sheets.DimSumMetaData(spreadsheetId)
+	metadata, err := sheets.DimSumMetaData(c.SheetID)
 	if err != nil {
 		log.Fatal(err)
 	}

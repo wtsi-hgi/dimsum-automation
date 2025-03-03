@@ -32,6 +32,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/wtsi-hgi/dimsum-automation/config"
 	"golang.org/x/oauth2/jwt"
 )
 
@@ -83,6 +84,17 @@ func TestConfig(t *testing.T) {
 			Scopes: []string{
 				"https://www.googleapis.com/auth/spreadsheets.readonly",
 			},
+		})
+
+		Convey("You can make a ServiceCredentials from a Config", func() {
+			c := &config.Config{
+				CredentialsPath: credPath,
+				SheetID:         "sheetID",
+			}
+
+			sc2, err := ServiceCredentialsFromConfig(c)
+			So(err, ShouldBeNil)
+			So(sc2, ShouldResemble, sc)
 		})
 	})
 }

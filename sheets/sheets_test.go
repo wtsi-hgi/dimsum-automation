@@ -27,21 +27,21 @@
 package sheets
 
 import (
-	"os"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
+	"github.com/wtsi-hgi/dimsum-automation/config"
 )
 
 func TestSheets(t *testing.T) {
-	spreadsheetID := os.Getenv("DIMSUM_AUTOMATION_SPREADSHEETID")
-	if spreadsheetID == "" {
-		SkipConvey("skipping sheet tests without DIMSUM_AUTOMATION_SPREADSHEETID set", t, func() {})
+	c, err := config.FromEnv("..")
+	if err != nil {
+		SkipConvey("skipping sheet tests without DIMSUM_AUTOMATION_* set", t, func() {})
 
 		return
 	}
 
-	sc, err := ServiceCredentialsFromFile("../credentials.json")
+	sc, err := ServiceCredentialsFromFile(c.CredentialsPath)
 	if err != nil {
 		SkipConvey("skipping sheet tests without valid credentials.json", t, func() {})
 
@@ -54,7 +54,7 @@ func TestSheets(t *testing.T) {
 		So(sheets, ShouldNotBeNil)
 
 		Convey("Which you can use to Read the contents of named sheets", func() {
-			sheetL, err := sheets.Read(spreadsheetID, "Libraries")
+			sheetL, err := sheets.Read(c.SheetID, "Libraries")
 			So(err, ShouldBeNil)
 			So(sheetL, ShouldNotBeNil)
 			So(sheetL.ColumnHeaders, ShouldResemble, []string{
@@ -66,7 +66,7 @@ func TestSheets(t *testing.T) {
 			So(len(sheetL.Rows), ShouldBeGreaterThan, 0)
 			So(sheetL.Rows[0][0], ShouldNotBeBlank)
 
-			sheetS, err := sheets.Read(spreadsheetID, "Samples")
+			sheetS, err := sheets.Read(c.SheetID, "Samples")
 			So(err, ShouldBeNil)
 			So(sheetS, ShouldNotBeNil)
 			So(sheetS.ColumnHeaders, ShouldResemble, []string{
@@ -76,7 +76,7 @@ func TestSheets(t *testing.T) {
 			So(len(sheetS.Rows), ShouldBeGreaterThan, 0)
 			So(sheetS.Rows[0][0], ShouldNotBeBlank)
 
-			_, err = sheets.Read(spreadsheetID, "~invalid")
+			_, err = sheets.Read(c.SheetID, "~invalid")
 			So(err, ShouldNotBeNil)
 
 			_, err = sheets.Read("invalid", "Libraries")
@@ -94,7 +94,7 @@ func TestSheets(t *testing.T) {
 		})
 
 		Convey("Which you can use to retrieve the merged data needed for DimSum", func() {
-			samples, err := sheets.DimSumMetaData(spreadsheetID)
+			samples, err := sheets.DimSumMetaData(c.SheetID)
 			So(err, ShouldBeNil)
 			So(len(samples), ShouldBeGreaterThan, 0)
 			So(samples["AM762abstart5"], ShouldResemble, MetaData{

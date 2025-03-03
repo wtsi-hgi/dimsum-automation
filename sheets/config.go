@@ -30,6 +30,7 @@ import (
 	"encoding/json"
 	"os"
 
+	"github.com/wtsi-hgi/dimsum-automation/config"
 	"golang.org/x/oauth2/jwt"
 )
 
@@ -46,6 +47,12 @@ type ServiceCredentials struct {
 	TokenURI                string `json:"token_uri"`
 	AuthProviderX509CertURL string `json:"auth_provider_x509_cert_url"`
 	ClientX509CertURL       string `json:"client_x509_cert_url"`
+}
+
+// ServiceCredentialsFromConfig calls ServiceCredentialsFromFile on the Config's
+// CredentialsPath.
+func ServiceCredentialsFromConfig(c *config.Config) (*ServiceCredentials, error) {
+	return ServiceCredentialsFromFile(c.CredentialsPath)
 }
 
 // ServiceCredentialsFromFile reads the given JSON file from (as retrieved from
