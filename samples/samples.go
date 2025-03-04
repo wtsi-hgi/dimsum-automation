@@ -82,6 +82,13 @@ func (c *cache) storeData(sponsor string, data []Sample) {
 	c.lastUpdate = time.Now()
 }
 
+func (c *cache) lastUpdated() time.Time {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+
+	return c.lastUpdate
+}
+
 // Client can connect to MLWH and Google Sheets to get sample information.
 type Client struct {
 	mc      MLWHClient
@@ -172,6 +179,12 @@ func (c *Client) Err() error {
 	defer c.errMu.RUnlock()
 
 	return c.err
+}
+
+// LastPrefetchSuccess returns the time of the last successful prefetch. If no
+// prefetch has succeeded yet, the zero time is returned.
+func (c *Client) LastPrefetchSuccess() time.Time {
+	return c.cache.lastUpdated()
 }
 
 // Sample represents a sample in the MLWH combined with metadata taken from

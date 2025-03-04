@@ -139,6 +139,8 @@ func TestSamplesMock(t *testing.T) {
 
 		defer c.Close()
 
+		So(c.LastPrefetchSuccess(), ShouldHappenBefore, createTime)
+
 		Convey("You can get info about samples belonging to a given sponsor", func() {
 			start := time.Now()
 			samples, err := c.ForSponsor(sponsor)
@@ -160,6 +162,7 @@ func TestSamplesMock(t *testing.T) {
 			})
 
 			So(time.Since(start), ShouldBeLessThan, mlwhQueryTime)
+			So(c.LastPrefetchSuccess(), ShouldHappenBefore, createTime)
 
 			Convey("Queries to mlwh and sheets are cached", func() {
 				mclient.setSamples(msamples[0:1])
@@ -173,6 +176,7 @@ func TestSamplesMock(t *testing.T) {
 
 				So(time.Since(start), ShouldBeLessThan, mlwhQueryTime)
 				So(time.Since(createTime), ShouldBeLessThan, mlwhQueryTime)
+				So(c.LastPrefetchSuccess(), ShouldHappenBefore, createTime)
 
 				Convey("And the cache expires and auto-renews", func() {
 					time.Sleep(allowedAge * 2)
@@ -189,6 +193,7 @@ func TestSamplesMock(t *testing.T) {
 					})
 
 					So(time.Since(start), ShouldBeLessThan, mlwhQueryTime)
+					So(c.LastPrefetchSuccess(), ShouldHappenAfter, createTime)
 				})
 
 				Convey("Prefetch errors are captured", func() {
@@ -203,6 +208,7 @@ func TestSamplesMock(t *testing.T) {
 					So(err, ShouldBeNil)
 					So(len(freshSamples), ShouldEqual, 3)
 					So(c.Err(), ShouldEqual, errMock)
+					So(c.LastPrefetchSuccess(), ShouldHappenBefore, createTime)
 				})
 			})
 		})
