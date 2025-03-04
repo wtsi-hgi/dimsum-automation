@@ -27,6 +27,7 @@
 package samples
 
 import (
+	"sync"
 	"testing"
 	"time"
 
@@ -36,16 +37,43 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
-const sponsor = "Ben Lehner"
+type Error string
+
+func (e Error) Error() string { return string(e) }
+
+const (
+	sponsor = "Ben Lehner"
+	errMock = Error("mock error")
+)
 
 type mockMLWH struct {
 	msamples  []mlwh.Sample
 	queryTime time.Duration
+	err       error
+	mu        sync.RWMutex
 }
 
 func (m *mockMLWH) SamplesForSponsor(sponsor string) ([]mlwh.Sample, error) {
 	time.Sleep(m.queryTime)
-	return m.msamples, nil
+
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.msamples, m.err
+}
+
+func (m *mockMLWH) setSamples(samples []mlwh.Sample) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.msamples = samples
+}
+
+func (m *mockMLWH) setError(err error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.err = err
 }
 
 type mockSheets struct{ smeta map[string]sheets.MetaData }
@@ -98,11 +126,18 @@ func TestSamplesMock(t *testing.T) {
 		sclient := &mockSheets{smeta: smeta}
 
 		allowedAge := 2 * mlwhQueryTime
-		s := New(mclient, sclient, ClientOptions{SheetID: "sheetID", CacheLifetime: allowedAge})
+		c := New(mclient, sclient, ClientOptions{
+			SheetID:       "sheetID",
+			CacheLifetime: allowedAge,
+			Prefetch:      []string{sponsor},
+		})
+		createTime := time.Now()
+
+		defer c.Close()
 
 		Convey("You can get info about samples belonging to a given sponsor", func() {
 			start := time.Now()
-			samples, err := s.ForSponsor(sponsor)
+			samples, err := c.ForSponsor(sponsor)
 			So(err, ShouldBeNil)
 			So(len(samples), ShouldEqual, 3)
 			So(samples, ShouldResemble, []Sample{
@@ -120,25 +155,26 @@ func TestSamplesMock(t *testing.T) {
 				},
 			})
 
-			uncachedTime := time.Since(start)
-			So(uncachedTime, ShouldBeGreaterThan, mlwhQueryTime)
+			So(time.Since(start), ShouldBeLessThan, mlwhQueryTime)
 
 			Convey("Queries to mlwh and sheets are cached", func() {
-				mclient.msamples = msamples[0:1]
+				mclient.setSamples(msamples[0:1])
+
+				time.Sleep(mlwhQueryTime / 2)
 
 				start = time.Now()
-				cachedSamples, err := s.ForSponsor(sponsor)
+				cachedSamples, err := c.ForSponsor(sponsor)
 				So(err, ShouldBeNil)
 				So(cachedSamples, ShouldResemble, samples)
 
-				cachedTime := time.Since(start)
-				So(cachedTime, ShouldBeLessThan, mlwhQueryTime)
+				So(time.Since(start), ShouldBeLessThan, mlwhQueryTime)
+				So(time.Since(createTime), ShouldBeLessThan, mlwhQueryTime)
 
-				Convey("But the cache expires", func() {
-					time.Sleep(allowedAge)
+				Convey("And the cache expires and auto-renews", func() {
+					time.Sleep(allowedAge * 2)
 
 					start = time.Now()
-					freshSamples, err := s.ForSponsor(sponsor)
+					freshSamples, err := c.ForSponsor(sponsor)
 					So(err, ShouldBeNil)
 					So(len(freshSamples), ShouldEqual, 1)
 					So(freshSamples, ShouldResemble, []Sample{
@@ -148,8 +184,21 @@ func TestSamplesMock(t *testing.T) {
 						},
 					})
 
-					cachedTime := time.Since(start)
-					So(cachedTime, ShouldBeGreaterThan, mlwhQueryTime)
+					So(time.Since(start), ShouldBeLessThan, mlwhQueryTime)
+				})
+
+				Convey("Prefetch errors are captured", func() {
+					mclient.setError(errMock)
+					So(c.Err(), ShouldBeNil)
+
+					time.Sleep(allowedAge * 2)
+
+					So(c.Err(), ShouldEqual, errMock)
+
+					freshSamples, err := c.ForSponsor(sponsor)
+					So(err, ShouldBeNil)
+					So(len(freshSamples), ShouldEqual, 3)
+					So(c.Err(), ShouldEqual, errMock)
 				})
 			})
 		})
@@ -174,10 +223,14 @@ func TestSamplesReal(t *testing.T) {
 		sheets, err := sheets.New(sc)
 		So(err, ShouldBeNil)
 
-		s := New(mlwh, sheets, ClientOptions{SheetID: c.SheetID})
+		c := New(mlwh, sheets, ClientOptions{
+			SheetID:       c.SheetID,
+			CacheLifetime: 1 * time.Minute,
+		})
 
-		Convey("You can get info about samples belonging to a given sponsor", func() {
-			samples, err := s.ForSponsor(sponsor)
+		Convey("You can get un-cached, un-prefetched info about samples belonging to a given sponsor", func() {
+			start := time.Now()
+			samples, err := c.ForSponsor(sponsor)
 			So(err, ShouldBeNil)
 			So(len(samples), ShouldBeGreaterThan, 0)
 			So(samples[0].SampleID, ShouldNotBeEmpty)
@@ -191,6 +244,15 @@ func TestSamplesReal(t *testing.T) {
 			So(samples[0].Wt, ShouldNotBeEmpty)
 			So(samples[0].Cutadapt5First, ShouldNotBeEmpty)
 			So(samples[0].Cutadapt5Second, ShouldNotBeEmpty)
+			So(time.Since(start), ShouldBeGreaterThan, 100*time.Millisecond)
+
+			Convey("Which is then cached", func() {
+				start = time.Now()
+				cachedSamples, err := c.ForSponsor(sponsor)
+				So(err, ShouldBeNil)
+				So(cachedSamples, ShouldResemble, samples)
+				So(time.Since(start), ShouldBeLessThan, 100*time.Millisecond)
+			})
 		})
 	})
 }

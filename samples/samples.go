@@ -34,10 +34,6 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
-type Error string
-
-func (e Error) Error() string { return string(e) }
-
 type MLWHClient interface {
 	// SamplesForSponsor returns all samples for the given sponsor, including
 	// study and run information.
@@ -67,18 +63,20 @@ func newCache(lifetime time.Duration) *cache {
 
 func (c *cache) getData(sponsor string) (bool, []Sample) {
 	c.mu.RLock()
+	defer c.mu.RUnlock()
+
 	cached := c.lastUpdate.Add(c.lifetime).After(time.Now())
 	data := c.samples[sponsor]
-	c.mu.RUnlock()
 
 	return cached, data
 }
 
 func (c *cache) storeData(sponsor string, data []Sample) {
 	c.mu.Lock()
+	defer c.mu.Unlock()
+
 	c.samples[sponsor] = data
 	c.lastUpdate = time.Now()
-	c.mu.Unlock()
 }
 
 // Client can connect to MLWH and Google Sheets to get sample information.
@@ -87,6 +85,12 @@ type Client struct {
 	sc      SheetsClient
 	sheetID string
 	cache   *cache
+
+	stopCh chan struct{}
+	stopMu sync.RWMutex
+
+	err   error
+	errMu sync.RWMutex
 }
 
 // ClientOptions are options for creating a new Client.
@@ -96,6 +100,12 @@ type ClientOptions struct {
 
 	// CacheLifetime is the maximum age of cached results.
 	CacheLifetime time.Duration
+
+	// Prefetch fetches ForSponsor() results for the given sponsors every
+	// CacheLifetime so that you never have to wait for a query and they're as
+	// fresh as possible. Errors are not returned, but can be checked with
+	// Err().
+	Prefetch []string
 }
 
 // New returns a new Client that can connect to MLWH and the google sheet with
@@ -108,7 +118,57 @@ func New(mc MLWHClient, sc SheetsClient, opts ClientOptions) *Client {
 		cache:   newCache(opts.CacheLifetime),
 	}
 
+	if len(opts.Prefetch) > 0 && opts.CacheLifetime > 0 {
+		c.asyncForSponsors(opts.Prefetch)
+		go c.prefetch(opts.CacheLifetime, opts.Prefetch)
+	}
+
 	return c
+}
+
+func (c *Client) asyncForSponsors(sponsors []string) {
+	for _, sponsor := range sponsors {
+		result, err := c.freshForSponsorQuery(sponsor)
+
+		c.errMu.Lock()
+		c.err = err
+		c.errMu.Unlock()
+
+		if err != nil {
+			return
+		}
+
+		c.cache.storeData(sponsor, result)
+	}
+}
+
+func (c *Client) prefetch(sleepTime time.Duration, sponsors []string) {
+	c.stopMu.Lock()
+	stopCh := make(chan struct{})
+	c.stopCh = stopCh
+	c.stopMu.Unlock()
+
+	ticker := time.NewTicker(sleepTime)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			c.asyncForSponsors(sponsors)
+		case <-stopCh:
+			return
+		}
+	}
+}
+
+// Err returns the last error that occurred during prefetching (ie. errors from
+// calling ForSponsor() in the background). Successful prefetches clear the
+// error.
+func (c *Client) Err() error {
+	c.errMu.RLock()
+	defer c.errMu.RUnlock()
+
+	return c.err
 }
 
 // Sample represents a sample in the MLWH combined with metadata taken from
@@ -121,10 +181,18 @@ type Sample struct {
 // ForSponsor returns all samples for the given sponsor where manual_qc is 1 and
 // where there is corresponding metadata in our google sheet. It caches database
 // queries, so results can be up to CacheLifetime old.
+//
+// If you have prefetching enabled, this always returns immediately with the
+// result of the last successful prefetch, which might have been longer than
+// CacheLifetime ago, if the last actual prefetch failed (see Err()).
 func (c *Client) ForSponsor(sponsor string) ([]Sample, error) {
 	cached, result := c.cache.getData(sponsor)
 
-	if !cached {
+	c.stopMu.RLock()
+	stopCh := c.stopCh
+	c.stopMu.RUnlock()
+
+	if !cached && stopCh == nil {
 		var err error
 
 		result, err = c.freshForSponsorQuery(sponsor)
@@ -184,5 +252,16 @@ func newSample(s mlwh.Sample, meta sheets.MetaData) Sample {
 				Cutadapt5Second: meta.Cutadapt5Second,
 			},
 		},
+	}
+}
+
+// Close closes connections and stops prefetching.
+func (c *Client) Close() {
+	c.stopMu.Lock()
+	defer c.stopMu.Unlock()
+
+	if c.stopCh != nil {
+		close(c.stopCh)
+		c.stopCh = nil
 	}
 }

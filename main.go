@@ -39,7 +39,7 @@ import (
 
 const (
 	sponsor       = "Ben Lehner"
-	cacheLifetime = 1 * time.Minute
+	cacheLifetime = 10 * time.Minute
 )
 
 func main() {
