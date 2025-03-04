@@ -67,7 +67,7 @@ func ServiceCredentialsFromFile(path string) (*ServiceCredentials, error) {
 	sc := &ServiceCredentials{}
 	err = json.Unmarshal(data, sc)
 
-	return sc, nil
+	return sc, err
 }
 
 func (sc *ServiceCredentials) toJWTConfig() *jwt.Config {
