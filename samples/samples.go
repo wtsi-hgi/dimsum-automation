@@ -52,8 +52,7 @@ type SheetsClient interface {
 }
 
 type cache struct {
-	samples    map[string][]mlwh.Sample
-	metadata   map[string]sheets.MetaData
+	samples    map[string][]Sample
 	lastUpdate time.Time
 	lifetime   time.Duration
 	mu         sync.RWMutex
@@ -61,26 +60,23 @@ type cache struct {
 
 func newCache(lifetime time.Duration) *cache {
 	return &cache{
-		samples:  make(map[string][]mlwh.Sample),
-		metadata: make(map[string]sheets.MetaData),
+		samples:  make(map[string][]Sample),
 		lifetime: lifetime,
 	}
 }
 
-func (c *cache) getData(sponsor string) (bool, []mlwh.Sample, map[string]sheets.MetaData) {
+func (c *cache) getData(sponsor string) (bool, []Sample) {
 	c.mu.RLock()
 	cached := c.lastUpdate.Add(c.lifetime).After(time.Now())
-	samples := c.samples[sponsor]
-	metadata := c.metadata
+	data := c.samples[sponsor]
 	c.mu.RUnlock()
 
-	return cached, samples, metadata
+	return cached, data
 }
 
-func (c *cache) storeData(sponsor string, samples []mlwh.Sample, metadata map[string]sheets.MetaData) {
+func (c *cache) storeData(sponsor string, data []Sample) {
 	c.mu.Lock()
-	c.samples[sponsor] = samples
-	c.metadata = metadata
+	c.samples[sponsor] = data
 	c.lastUpdate = time.Now()
 	c.mu.Unlock()
 }
@@ -126,17 +122,31 @@ type Sample struct {
 // where there is corresponding metadata in our google sheet. It caches database
 // queries, so results can be up to CacheLifetime old.
 func (c *Client) ForSponsor(sponsor string) ([]Sample, error) {
-	cached, samples, metadata := c.cache.getData(sponsor)
+	cached, result := c.cache.getData(sponsor)
 
 	if !cached {
 		var err error
 
-		samples, metadata, err = c.doLiveQueries(sponsor)
+		result, err = c.freshForSponsorQuery(sponsor)
 		if err != nil {
 			return nil, err
 		}
 
-		c.cache.storeData(sponsor, samples, metadata)
+		c.cache.storeData(sponsor, result)
+	}
+
+	return result, nil
+}
+
+func (c *Client) freshForSponsorQuery(sponsor string) ([]Sample, error) {
+	samples, err := c.mc.SamplesForSponsor(sponsor)
+	if err != nil {
+		return nil, err
+	}
+
+	metadata, err := c.sc.DimSumMetaData(c.sheetID)
+	if err != nil {
+		return nil, err
 	}
 
 	result := make([]Sample, 0, len(metadata))
@@ -151,20 +161,6 @@ func (c *Client) ForSponsor(sponsor string) ([]Sample, error) {
 	}
 
 	return result, nil
-}
-
-func (c *Client) doLiveQueries(sponsor string) ([]mlwh.Sample, map[string]sheets.MetaData, error) {
-	samples, err := c.mc.SamplesForSponsor(sponsor)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	metadata, err := c.sc.DimSumMetaData(c.sheetID)
-	if err != nil {
-		return nil, nil, err
-	}
-
-	return samples, metadata, nil
 }
 
 func newSample(s mlwh.Sample, meta sheets.MetaData) Sample {
