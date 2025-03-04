@@ -151,12 +151,12 @@ linters:
     - sloglint
     - stylecheck
     - tagalign
-    - tenv
     - thelper
     - tparallel
     - unconvert
     - unparam
     - usestdlibvars
+    - usetesting
     - wastedassign
     - whitespace
     - wsl
