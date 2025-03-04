@@ -76,6 +76,10 @@ func (m *mockMLWH) setError(err error) {
 	m.err = err
 }
 
+func (m *mockMLWH) Close() error {
+	return nil
+}
+
 type mockSheets struct{ smeta map[string]sheets.MetaData }
 
 func (m *mockSheets) DimSumMetaData(sheetID string) (map[string]sheets.MetaData, error) {

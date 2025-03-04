@@ -88,8 +88,12 @@ func main() {
 	fmt.Printf("\nMerged sample info:\n")
 
 	client := samples.New(db, sheets, samples.ClientOptions{
-		SheetID: c.SheetID, CacheLifetime: cacheLifetime,
+		SheetID:       c.SheetID,
+		CacheLifetime: cacheLifetime,
+		Prefetch:      []string{sponsor},
 	})
+
+	defer client.Close()
 
 	clientSamples, err := client.ForSponsor(sponsor)
 	if err != nil {

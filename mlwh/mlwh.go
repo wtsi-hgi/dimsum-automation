@@ -118,3 +118,8 @@ func (m *MLWH) SamplesForSponsor(sponsor string) ([]Sample, error) {
 
 	return samples, nil
 }
+
+// Close closes the connection to the MLWH.
+func (m *MLWH) Close() error {
+	return m.pool.Close()
+}

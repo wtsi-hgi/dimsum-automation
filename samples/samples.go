@@ -38,6 +38,9 @@ type MLWHClient interface {
 	// SamplesForSponsor returns all samples for the given sponsor, including
 	// study and run information.
 	SamplesForSponsor(sponsor string) ([]mlwh.Sample, error)
+
+	// Close closes the connection to the MLWH database.
+	Close() error
 }
 
 type SheetsClient interface {
@@ -255,8 +258,10 @@ func newSample(s mlwh.Sample, meta sheets.MetaData) Sample {
 	}
 }
 
-// Close closes connections and stops prefetching.
-func (c *Client) Close() {
+// Close closes database connections and stops prefetching.
+func (c *Client) Close() error {
+	err := c.mc.Close()
+
 	c.stopMu.Lock()
 	defer c.stopMu.Unlock()
 
@@ -264,4 +269,6 @@ func (c *Client) Close() {
 		close(c.stopCh)
 		c.stopCh = nil
 	}
+
+	return err
 }
