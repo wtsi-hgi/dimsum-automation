@@ -32,6 +32,7 @@ import (
 
 	"github.com/wtsi-hgi/dimsum-automation/config"
 	"github.com/wtsi-hgi/dimsum-automation/mlwh"
+	"github.com/wtsi-hgi/dimsum-automation/samples"
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
@@ -59,6 +60,7 @@ func main() {
 	}
 
 	fmt.Printf("All samples from google sheet (sample name, replicate, library id, cutadapt5first):\n")
+
 	for sample, meta := range metadata {
 		fmt.Printf("%s, %d, %s, %s\n", sample, meta.Replicate, meta.LibraryID, meta.Cutadapt5First)
 	}
@@ -68,13 +70,29 @@ func main() {
 		log.Fatalf("unable to connect to MLWH: %v", err)
 	}
 
-	samples, err := db.SamplesForSponsor(sponsor)
+	mlwhSamples, err := db.SamplesForSponsor(sponsor)
 	if err != nil {
 		log.Fatalf("unable to get samples: %v", err)
 	}
 
 	fmt.Printf("\nExample samples found in MLWH (sample name, id, study name):\n")
-	for _, sample := range samples[0:5] {
+
+	for _, sample := range mlwhSamples[0:5] {
 		fmt.Printf("%s, %s, %s\n", sample.SampleName, sample.SampleID, sample.StudyName)
+	}
+
+	fmt.Printf("\nMerged sample info:\n")
+
+	client := samples.New(db, sheets, c.SheetID)
+
+	clientSamples, err := client.ForSponsor(sponsor)
+	if err != nil {
+		log.Fatalf("unable to get samples: %v", err)
+	}
+
+	for _, sample := range clientSamples {
+		fmt.Printf("%s, %s, %s, %d, %s, %s\n",
+			sample.SampleName, sample.SampleID, sample.StudyName,
+			sample.Replicate, sample.LibraryID, sample.Cutadapt5First)
 	}
 }

@@ -55,13 +55,13 @@ type MetaData struct {
 // DimSumMetaData reads sheets "Libraries" and "Samples" from the sheet with the
 // given id and merges the results for columns relevant to DimSum, returning a
 // map where keys are sample_id.
-func (s *Sheets) DimSumMetaData(docID string) (map[string]MetaData, error) {
-	libMeta, err := s.getLibraryMetaData(docID)
+func (s *Sheets) DimSumMetaData(sheetID string) (map[string]MetaData, error) {
+	libMeta, err := s.getLibraryMetaData(sheetID)
 	if err != nil {
 		return nil, err
 	}
 
-	sheet, err := s.Read(docID, "Samples")
+	sheet, err := s.Read(sheetID, "Samples")
 	if err != nil {
 		return nil, err
 	}
@@ -107,8 +107,8 @@ func (s *Sheets) DimSumMetaData(docID string) (map[string]MetaData, error) {
 	return m, nil
 }
 
-func (s *Sheets) getLibraryMetaData(docID string) (map[string]LibraryMetaData, error) {
-	sheet, err := s.Read(docID, "Libraries")
+func (s *Sheets) getLibraryMetaData(sheetID string) (map[string]LibraryMetaData, error) {
+	sheet, err := s.Read(sheetID, "Libraries")
 	if err != nil {
 		return nil, err
 	}

@@ -80,7 +80,8 @@ JOIN sample sa on sa.id_sample_tmp = fc.id_sample_tmp
 WHERE st.faculty_sponsor = ? and fc.manual_qc = '1'
 `
 
-// SamplesForSponsor returns all samples in the MLWH for the given sponsor.
+// SamplesForSponsor returns all samples in the MLWH for the given sponsor where
+// manual_qc is 1.
 func (m *MLWH) SamplesForSponsor(sponsor string) ([]Sample, error) {
 	rows, err := m.pool.Query(getSamples, sponsor)
 	if err != nil {

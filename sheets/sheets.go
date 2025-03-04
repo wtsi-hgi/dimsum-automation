@@ -69,8 +69,8 @@ type Sheet struct {
 // Read retrieves the contents of a given document and sheet within that
 // document. The id of a Google sheet is the long string of characters in the
 // URL when viewing that document.
-func (s *Sheets) Read(docID, sheetName string) (*Sheet, error) {
-	valRange, err := s.srv.Spreadsheets.Values.Get(docID, sheetName).Do()
+func (s *Sheets) Read(sheetID, sheetName string) (*Sheet, error) {
+	valRange, err := s.srv.Spreadsheets.Values.Get(sheetID, sheetName).Do()
 	if err != nil {
 		return nil, err
 	}
