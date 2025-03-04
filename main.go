@@ -29,6 +29,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/wtsi-hgi/dimsum-automation/config"
 	"github.com/wtsi-hgi/dimsum-automation/mlwh"
@@ -36,7 +37,10 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
-const sponsor = "Ben Lehner"
+const (
+	sponsor       = "Ben Lehner"
+	cacheLifetime = 1 * time.Minute
+)
 
 func main() {
 	c, err := config.FromEnv()
@@ -83,7 +87,9 @@ func main() {
 
 	fmt.Printf("\nMerged sample info:\n")
 
-	client := samples.New(db, sheets, c.SheetID)
+	client := samples.New(db, sheets, samples.ClientOptions{
+		SheetID: c.SheetID, CacheLifetime: cacheLifetime,
+	})
 
 	clientSamples, err := client.ForSponsor(sponsor)
 	if err != nil {

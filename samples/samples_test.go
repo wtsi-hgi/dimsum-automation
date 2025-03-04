@@ -28,6 +28,7 @@ package samples
 
 import (
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 	"github.com/wtsi-hgi/dimsum-automation/config"
@@ -37,9 +38,13 @@ import (
 
 const sponsor = "Ben Lehner"
 
-type mockMLWH struct{ msamples []mlwh.Sample }
+type mockMLWH struct {
+	msamples  []mlwh.Sample
+	queryTime time.Duration
+}
 
 func (m *mockMLWH) SamplesForSponsor(sponsor string) ([]mlwh.Sample, error) {
+	time.Sleep(m.queryTime)
 	return m.msamples, nil
 }
 
@@ -81,7 +86,8 @@ func TestSamplesMock(t *testing.T) {
 				StudyName:  "study3",
 			},
 		}
-		mlwh := &mockMLWH{msamples: msamples}
+		mlwhQueryTime := 100 * time.Millisecond
+		mclient := &mockMLWH{msamples: msamples, queryTime: mlwhQueryTime}
 
 		smeta := map[string]sheets.MetaData{
 			"sample1": {Replicate: 1},
@@ -89,11 +95,13 @@ func TestSamplesMock(t *testing.T) {
 			"sample4": {Replicate: 3},
 			"sample5": {Replicate: 4},
 		}
-		sheets := &mockSheets{smeta: smeta}
+		sclient := &mockSheets{smeta: smeta}
 
-		s := New(mlwh, sheets, "sheetID")
+		allowedAge := 2 * mlwhQueryTime
+		s := New(mclient, sclient, ClientOptions{SheetID: "sheetID", CacheLifetime: allowedAge})
 
 		Convey("You can get info about samples belonging to a given sponsor", func() {
+			start := time.Now()
 			samples, err := s.ForSponsor(sponsor)
 			So(err, ShouldBeNil)
 			So(len(samples), ShouldEqual, 3)
@@ -110,6 +118,39 @@ func TestSamplesMock(t *testing.T) {
 					Sample:   msamples[3],
 					MetaData: smeta[msamples[3].SampleName],
 				},
+			})
+
+			uncachedTime := time.Since(start)
+			So(uncachedTime, ShouldBeGreaterThan, mlwhQueryTime)
+
+			Convey("Queries to mlwh and sheets are cached", func() {
+				mclient.msamples = msamples[0:1]
+
+				start = time.Now()
+				cachedSamples, err := s.ForSponsor(sponsor)
+				So(err, ShouldBeNil)
+				So(cachedSamples, ShouldResemble, samples)
+
+				cachedTime := time.Since(start)
+				So(cachedTime, ShouldBeLessThan, mlwhQueryTime)
+
+				Convey("But the cache expires", func() {
+					time.Sleep(allowedAge)
+
+					start = time.Now()
+					freshSamples, err := s.ForSponsor(sponsor)
+					So(err, ShouldBeNil)
+					So(len(freshSamples), ShouldEqual, 1)
+					So(freshSamples, ShouldResemble, []Sample{
+						{
+							Sample:   msamples[0],
+							MetaData: smeta[msamples[0].SampleName],
+						},
+					})
+
+					cachedTime := time.Since(start)
+					So(cachedTime, ShouldBeGreaterThan, mlwhQueryTime)
+				})
 			})
 		})
 	})
@@ -133,7 +174,7 @@ func TestSamplesReal(t *testing.T) {
 		sheets, err := sheets.New(sc)
 		So(err, ShouldBeNil)
 
-		s := New(mlwh, sheets, c.SheetID)
+		s := New(mlwh, sheets, ClientOptions{SheetID: c.SheetID})
 
 		Convey("You can get info about samples belonging to a given sponsor", func() {
 			samples, err := s.ForSponsor(sponsor)
