@@ -58,34 +58,36 @@ func main() {
 		log.Fatalf("unable to retrieve Sheets client: %v", err)
 	}
 
-	metadata, err := sheets.DimSumMetaData(c.SheetID)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("All samples from google sheet (sample name, replicate, library id, cutadapt5first):\n")
-
-	for sample, meta := range metadata {
-		fmt.Printf("%s, %d, %s, %s\n", sample, meta.Replicate, meta.LibraryID, meta.Cutadapt5First)
-	}
-
 	db, err := mlwh.New(mlwh.MySQLConfigFromConfig(c))
 	if err != nil {
 		log.Fatalf("unable to connect to MLWH: %v", err)
 	}
 
-	mlwhSamples, err := db.SamplesForSponsor(sponsor)
-	if err != nil {
-		log.Fatalf("unable to get samples: %v", err)
+	if false {
+		metadata, err := sheets.DimSumMetaData(c.SheetID)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		fmt.Printf("All samples from google sheet (sample name, replicate, library id, cutadapt5first):\n")
+
+		for sample, meta := range metadata {
+			fmt.Printf("%s, %d, %s, %s\n", sample, meta.Replicate, meta.LibraryID, meta.Cutadapt5First)
+		}
+
+		mlwhSamples, err := db.SamplesForSponsor(sponsor)
+		if err != nil {
+			log.Fatalf("unable to get samples: %v", err)
+		}
+
+		fmt.Printf("\nExample samples found in MLWH (sample name, id, study name):\n")
+
+		for _, sample := range mlwhSamples[0:5] {
+			fmt.Printf("%s, %s, %s\n", sample.SampleName, sample.SampleID, sample.StudyName)
+		}
 	}
 
-	fmt.Printf("\nExample samples found in MLWH (sample name, id, study name):\n")
-
-	for _, sample := range mlwhSamples[0:5] {
-		fmt.Printf("%s, %s, %s\n", sample.SampleName, sample.SampleID, sample.StudyName)
-	}
-
-	fmt.Printf("\nMerged sample info:\n")
+	fmt.Printf("\nMerged sample info (sample id, study id, run id, replicate, library id, cutadapt5first):\n")
 
 	client := samples.New(db, sheets, samples.ClientOptions{
 		SheetID:       c.SheetID,
@@ -102,7 +104,7 @@ func main() {
 
 	for _, sample := range clientSamples {
 		fmt.Printf("%s, %s, %s, %d, %s, %s\n",
-			sample.SampleName, sample.SampleID, sample.StudyName,
+			sample.SampleID, sample.StudyID, sample.RunID,
 			sample.Replicate, sample.LibraryID, sample.Cutadapt5First)
 	}
 }
