@@ -50,10 +50,12 @@ const (
 
 	experiementDesignPrefix = "dimsumDesign_"
 	experiementDesignSuffix = ".txt"
-	outputSubdir            = "outputs"
-	cutAdaptRequired        = ":required..."
-	cutAdaptOptional        = ":optional"
-	dimsumProjectPrefix     = "dimsumRun_"
+	experimentDesignHeader  = "sample_name\texperiment_replicate\tselection_id\tselection_replicate\t" +
+		"technical_replicate\tpair1\tpair2\tgenerations\tcell_density\tselection_time\n"
+	outputSubdir        = "outputs"
+	cutAdaptRequired    = ":required..."
+	cutAdaptOptional    = ":optional"
+	dimsumProjectPrefix = "dimsumRun_"
 )
 
 type Error string
@@ -105,26 +107,16 @@ func (ed ExperimentDesign) Write(dir, experiment string) (string, error) {
 	}
 	defer file.Close()
 
-	const header = "sample_name\texperiment_replicate\tselection_id\tselection_replicate\t" +
-		"technical_replicate\tpair1\tpair2\tgenerations\tcell_density\tselection_time\n"
-
-	_, err = file.WriteString(header)
-	if err != nil {
+	if _, err = file.WriteString(experimentDesignHeader); err != nil {
 		return "", err
 	}
 
 	for _, exp := range ed {
-		selectionReplicate := ""
-		if exp.Selection == 1 {
-			selectionReplicate = "1"
-		}
-
 		line := fmt.Sprintf("%s\t%d\t%d\t%s\t%d\t%s\t%s\t%s\t%.3f\t%.1f\n",
-			exp.SampleID, exp.Replicate, exp.Selection, selectionReplicate, 1,
+			exp.SampleID, exp.Replicate, exp.Selection, selectionToReplicate(exp.Selection), 1,
 			exp.Pair1, exp.Pair2, "", exp.CellDensity, exp.SelectionTime)
 
-		_, err = file.WriteString(line)
-		if err != nil {
+		if _, err = file.WriteString(line); err != nil {
 			return "", err
 		}
 	}
@@ -134,6 +126,14 @@ func (ed ExperimentDesign) Write(dir, experiment string) (string, error) {
 
 func experimentDesignPath(dir, experiment string) string {
 	return filepath.Join(dir, experiementDesignPrefix+experiment+experiementDesignSuffix)
+}
+
+func selectionToReplicate(selection int) string {
+	if selection == 1 {
+		return "1"
+	}
+
+	return ""
 }
 
 // DimSum represents the parameters for running DiMSum. All parameters are

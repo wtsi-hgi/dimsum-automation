@@ -79,7 +79,7 @@ func TestDimsum(t *testing.T) {
 			},
 		}
 
-		Convey("You can generate an experiement design file", func() {
+		Convey("You can generate an experiment design file", func() {
 			dir := t.TempDir()
 
 			design := NewExperimentDesign(testSamples)
