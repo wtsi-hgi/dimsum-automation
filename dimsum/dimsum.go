@@ -72,6 +72,15 @@ type Experiment struct {
 	SelectionTime float32
 }
 
+// SelectionReplicate converts the selection number to a replicate number.
+func (e Experiment) SelectionReplicate() string {
+	if e.Selection == 1 {
+		return "1"
+	}
+
+	return ""
+}
+
 type ExperimentDesign []Experiment
 
 // NewExperimentDesign creates an experiment design from the given samples.
@@ -113,7 +122,7 @@ func (ed ExperimentDesign) Write(dir, experiment string) (string, error) {
 
 	for _, exp := range ed {
 		line := fmt.Sprintf("%s\t%d\t%d\t%s\t%d\t%s\t%s\t%s\t%.3f\t%.1f\n",
-			exp.SampleID, exp.Replicate, exp.Selection, selectionToReplicate(exp.Selection), 1,
+			exp.SampleID, exp.Replicate, exp.Selection, exp.SelectionReplicate(), 1,
 			exp.Pair1, exp.Pair2, "", exp.CellDensity, exp.SelectionTime)
 
 		if _, err = file.WriteString(line); err != nil {
@@ -126,14 +135,6 @@ func (ed ExperimentDesign) Write(dir, experiment string) (string, error) {
 
 func experimentDesignPath(dir, experiment string) string {
 	return filepath.Join(dir, experiementDesignPrefix+experiment+experiementDesignSuffix)
-}
-
-func selectionToReplicate(selection int) string {
-	if selection == 1 {
-		return "1"
-	}
-
-	return ""
 }
 
 // DimSum represents the parameters for running DiMSum. All parameters are
