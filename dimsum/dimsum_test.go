@@ -88,8 +88,8 @@ func TestDimsum(t *testing.T) {
 					SampleID:      sample1,
 					Replicate:     1,
 					Selection:     0,
-					Pair1:         sample1 + "_1.fastq.gz",
-					Pair2:         sample1 + "_2.fastq.gz",
+					Pair1:         sample1 + pair1FastqSuffix,
+					Pair2:         sample1 + pair2FastqSuffix,
 					CellDensity:   0.1,
 					SelectionTime: 0.5,
 				},
@@ -97,8 +97,8 @@ func TestDimsum(t *testing.T) {
 					SampleID:      sample2,
 					Replicate:     2,
 					Selection:     1,
-					Pair1:         sample2 + "_1.fastq.gz",
-					Pair2:         sample2 + "_2.fastq.gz",
+					Pair1:         sample2 + pair1FastqSuffix,
+					Pair2:         sample2 + pair2FastqSuffix,
 					CellDensity:   0.2,
 					SelectionTime: 0.6,
 				},
@@ -107,7 +107,8 @@ func TestDimsum(t *testing.T) {
 			experiment := "762_808"
 			designPath, err := design.Write(dir, experiment)
 			So(err, ShouldBeNil)
-			So(designPath, ShouldEqual, filepath.Join(dir, "dimsumDesign_"+experiment+".txt"))
+			So(designPath, ShouldEqual,
+				filepath.Join(dir, experiementDesignPrefix+experiment+experiementDesignSuffix))
 
 			ts0 := testSamples[0]
 			ts0m := ts0.MetaData

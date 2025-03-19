@@ -48,6 +48,8 @@ const (
 	DefaultRetainIntermediateFiles = true
 	DefaultDesignPairDuplicates    = false
 
+	pair1FastqSuffix        = "_1.fastq.gz"
+	pair2FastqSuffix        = "_2.fastq.gz"
 	experiementDesignPrefix = "dimsumDesign_"
 	experiementDesignSuffix = ".txt"
 	experimentDesignHeader  = "sample_name\texperiment_replicate\tselection_id\tselection_replicate\t" +
@@ -92,8 +94,8 @@ func NewExperimentDesign(samples []samples.Sample) ExperimentDesign {
 			SampleID:      sample.Sample.SampleID,
 			Replicate:     sample.MetaData.Replicate,
 			Selection:     sample.MetaData.Selection,
-			Pair1:         sample.Sample.SampleID + "_1.fastq.gz",
-			Pair2:         sample.Sample.SampleID + "_2.fastq.gz",
+			Pair1:         sample.Sample.SampleID + pair1FastqSuffix,
+			Pair2:         sample.Sample.SampleID + pair2FastqSuffix,
 			CellDensity:   sample.MetaData.OD,
 			SelectionTime: sample.MetaData.Time,
 		}
