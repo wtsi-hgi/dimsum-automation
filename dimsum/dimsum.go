@@ -48,11 +48,11 @@ const (
 	DefaultRetainIntermediateFiles = true
 	DefaultDesignPairDuplicates    = false
 
-	pair1FastqSuffix        = "_1.fastq.gz"
-	pair2FastqSuffix        = "_2.fastq.gz"
-	experiementDesignPrefix = "dimsumDesign_"
-	experiementDesignSuffix = ".txt"
-	experimentDesignHeader  = "sample_name\texperiment_replicate\tselection_id\tselection_replicate\t" +
+	pair1FastqSuffix       = "_1.fastq.gz"
+	pair2FastqSuffix       = "_2.fastq.gz"
+	experimentDesignPrefix = "dimsumDesign_"
+	experimentDesignSuffix = ".txt"
+	experimentDesignHeader = "sample_name\texperiment_replicate\tselection_id\tselection_replicate\t" +
 		"technical_replicate\tpair1\tpair2\tgenerations\tcell_density\tselection_time\n"
 	outputSubdir        = "outputs"
 	cutAdaptRequired    = ":required..."
@@ -64,14 +64,15 @@ type Error string
 
 func (e Error) Error() string { return string(e) }
 
+// Experiment represents a single experiment's metadata.
 type Experiment struct {
-	SampleID      string
-	Replicate     int
-	Selection     int
-	Pair1         string
-	Pair2         string
-	CellDensity   float32
-	SelectionTime float32
+	SampleID      string  // SampleID is the unique identifier for the sample.
+	Replicate     int     // Replicate is the replicate number of the experiment.
+	Selection     int     // Selection is the selection number of the experiment.
+	Pair1         string  // Pair1 is the filename of the first pair of FASTQ files.
+	Pair2         string  // Pair2 is the filename of the second pair of FASTQ files.
+	CellDensity   float32 // CellDensity is the cell density at the time of sampling.
+	SelectionTime float32 // SelectionTime is the selection time.
 }
 
 // SelectionReplicate converts the selection number to a replicate number.
@@ -136,37 +137,46 @@ func (ed ExperimentDesign) Write(dir, experiment string) (string, error) {
 }
 
 func experimentDesignPath(dir, experiment string) string {
-	return filepath.Join(dir, experiementDesignPrefix+experiment+experiementDesignSuffix)
+	return filepath.Join(dir, experimentDesignPrefix+experiment+experimentDesignSuffix)
 }
 
 // DimSum represents the parameters for running DiMSum. All parameters are
-// required, but using New() will default many of them to usually fixed values.
 type DimSum struct {
 	// Required parameters
-	Exe                     string
-	FastqDir                string
-	BarcodeIdentityPath     string
-	Experiment              string
-	VSearchMinQual          int
-	StartStage              int
-	FitnessMinInputCountAny int
-	FitnessMinInputCountAll int
+	Exe                     string // Path to the DiMSum executable
+	FastqDir                string // Directory containing FASTQ files
+	BarcodeIdentityPath     string // Path to the barcode identity file
+	Experiment              string // Name of the experiment
+	VSearchMinQual          int    // Minimum quality score for VSearch
+	StartStage              int    // Stage to start the analysis from
+	FitnessMinInputCountAny int    // Minimum input count for any fitness calculation
+	FitnessMinInputCountAll int    // Minimum input count for all fitness calculations
 
 	// Optional parameters
-	FastqExtension          string
-	Gzipped                 bool
-	CutAdaptMinLength       int
-	CutAdaptErrorRate       float32
-	Cores                   int
-	MaxSubstitutions        int
-	MixedSubstitutions      bool
-	MutagenesisType         string
-	RetainIntermediateFiles bool
-	DesignPairDuplicates    bool
+	FastqExtension          string  // Extension of FASTQ files
+	Gzipped                 bool    // Whether the FASTQ files are gzipped
+	CutAdaptMinLength       int     // Minimum length for CutAdapt
+	CutAdaptErrorRate       float32 // Error rate for CutAdapt
+	Cores                   int     // Number of cores to use
+	MaxSubstitutions        int     // Maximum number of substitutions allowed
+	MixedSubstitutions      bool    // Whether mixed substitutions are allowed
+	MutagenesisType         string  // Type of mutagenesis
+	RetainIntermediateFiles bool    // Whether to retain intermediate files
+	DesignPairDuplicates    bool    // Whether to design pair duplicates
 }
 
 // New creates a new DimSum instance with default values for the properties not
 // supplied.
+//
+// Parameters:
+//   - exe: Path to the DiMSum executable.
+//   - fastqDir: Directory containing FASTQ files.
+//   - barcodeIdentityPath: Path to the barcode identity file.
+//   - experiment: Name of the experiment.
+//   - vsearchMinQual: Minimum quality score for VSearch.
+//   - startStage: Stage to start the analysis from.
+//   - fitnessMinInputCountAny: Minimum input count for any fitness calculation.
+//   - fitnessMinInputCountAll: Minimum input count for all fitness calculations.
 func New(exe, fastqDir, barcodeIdentityPath, experiment string,
 	vsearchMinQual, startStage, fitnessMinInputCountAny, fitnessMinInputCountAll int) DimSum {
 	return DimSum{
@@ -193,6 +203,10 @@ func New(exe, fastqDir, barcodeIdentityPath, experiment string,
 }
 
 // Command generates the DiMSum command to execute.
+//
+// Parameters:
+//   - dir: The directory where the output files will be stored.
+//   - libMeta: Metadata for the library used in the experiment.
 func (d *DimSum) Command(dir string, libMeta sheets.LibraryMetaData) string {
 	cmd := fmt.Sprintf("%s -i %s -l %s -g %s -e %s --cutadapt5First %s --cutadapt5Second %s "+
 		"-n %d -a %.2f -q %d -o %s -p %s -s %d -w %s -c %d "+
@@ -202,9 +216,9 @@ func (d *DimSum) Command(dir string, libMeta sheets.LibraryMetaData) string {
 		"--barcodeIdentityPath %s",
 		d.Exe, d.FastqDir, d.FastqExtension, d.gzippedStr(), experimentDesignPath(dir, d.Experiment),
 		libMeta.Cutadapt5First+cutAdaptRequired+
-			reverseCompliment(libMeta.Cutadapt5Second)+cutAdaptOptional,
+			reverseComplement(libMeta.Cutadapt5Second)+cutAdaptOptional,
 		libMeta.Cutadapt5Second+cutAdaptRequired+
-			reverseCompliment(libMeta.Cutadapt5First)+cutAdaptOptional,
+			reverseComplement(libMeta.Cutadapt5First)+cutAdaptOptional,
 		d.CutAdaptMinLength, d.CutAdaptErrorRate,
 		d.VSearchMinQual, filepath.Join(dir, outputSubdir), dimsumProjectPrefix+d.Experiment,
 		d.StartStage, libMeta.Wt, d.Cores, d.FitnessMinInputCountAny,
@@ -244,7 +258,7 @@ func (d *DimSum) designPairDuplicatesStr() string {
 	return boolToLetter(d.DesignPairDuplicates)
 }
 
-func reverseCompliment(seq string) string {
+func reverseComplement(seq string) string {
 	seq = strings.ToUpper(seq)
 	result := make([]byte, len(seq))
 

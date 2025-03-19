@@ -108,7 +108,7 @@ func TestDimsum(t *testing.T) {
 			designPath, err := design.Write(dir, experiment)
 			So(err, ShouldBeNil)
 			So(designPath, ShouldEqual,
-				filepath.Join(dir, experiementDesignPrefix+experiment+experiementDesignSuffix))
+				filepath.Join(dir, experimentDesignPrefix+experiment+experimentDesignSuffix))
 
 			ts0 := testSamples[0]
 			ts0m := ts0.MetaData
