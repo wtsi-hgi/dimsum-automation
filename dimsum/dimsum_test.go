@@ -40,8 +40,6 @@ import (
 
 func TestDimsum(t *testing.T) {
 	Convey("Given library and sample info", t, func() {
-		exe := "/path/to/DiMSum"
-		fastqDir := "/path/to/fastqs"
 		sample1 := "sample1"
 		sample2 := "sample2"
 
@@ -127,6 +125,8 @@ func TestDimsum(t *testing.T) {
 			))
 
 			Convey("Then you can generate a dimsum command line", func() {
+				exe := "/path/to/DiMSum"
+				fastqDir := "/path/to/fastqs"
 				vsearchMinQual := 20
 				startStage := 0
 				fitnessMinInputCountAny := 10
