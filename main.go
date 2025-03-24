@@ -27,11 +27,16 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/wtsi-hgi/dimsum-automation/config"
+	"github.com/wtsi-hgi/dimsum-automation/dimsum"
+	"github.com/wtsi-hgi/dimsum-automation/itl"
 	"github.com/wtsi-hgi/dimsum-automation/mlwh"
 	"github.com/wtsi-hgi/dimsum-automation/samples"
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
@@ -63,31 +68,56 @@ func main() {
 		log.Fatalf("unable to connect to MLWH: %v", err)
 	}
 
-	if false {
-		metadata, err := sheets.DimSumMetaData(c.SheetID)
-		if err != nil {
-			log.Fatal(err)
-		}
+	metadata, err := sheets.DimSumMetaData(c.SheetID)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-		fmt.Printf("All samples from google sheet (sample name, replicate, library id, cutadapt5first):\n")
+	fmt.Printf("All samples names from google sheet:\n")
 
-		for sample, meta := range metadata {
-			fmt.Printf("%s, %d, %s, %s\n", sample, meta.Replicate, meta.LibraryID, meta.Cutadapt5First)
-		}
+	sampleNames := make([]string, 0, len(metadata))
 
-		mlwhSamples, err := db.SamplesForSponsor(sponsor)
-		if err != nil {
-			log.Fatalf("unable to get samples: %v", err)
-		}
+	// for sample, meta := range metadata {
+	// 	fmt.Printf("%s, %d, %s, %s\n", sample, meta.Replicate, meta.LibraryID, meta.Cutadapt5First)
+	// }
 
-		fmt.Printf("\nExample samples found in MLWH (sample name, id, study name):\n")
+	for sample := range metadata {
+		sampleNames = append(sampleNames, sample)
+	}
 
-		for _, sample := range mlwhSamples[0:5] {
-			fmt.Printf("%s, %s, %s\n", sample.SampleName, sample.SampleID, sample.StudyName)
+	sort.Strings(sampleNames)
+	fmt.Printf(strings.Join(sampleNames, ",") + "\n")
+
+	mlwhSamples, err := db.SamplesForSponsor(sponsor)
+	if err != nil {
+		log.Fatalf("unable to get samples: %v", err)
+	}
+
+	fmt.Printf("\nExample samples names found in MLWH:\n")
+
+	sampleNames = make([]string, 0, len(mlwhSamples))
+
+	// for _, sample := range mlwhSamples[0:5] {
+	// 	fmt.Printf("%s, %s, %s\n", sample.SampleName, sample.SampleID, sample.StudyName)
+	// }
+
+	for _, sample := range mlwhSamples {
+		sampleNames = append(sampleNames, sample.SampleName)
+	}
+
+	sort.Strings(sampleNames)
+
+	subset := make([]string, 0, len(mlwhSamples))
+
+	for i, sample := range sampleNames {
+		if i%10 == 0 {
+			subset = append(subset, sample)
 		}
 	}
 
-	fmt.Printf("\nMerged sample info (sample id, study id, run id, replicate, library id, cutadapt5first):\n")
+	fmt.Printf(strings.Join(subset, ",") + "\n")
+
+	fmt.Printf("\nMerged sample info:\n")
 
 	client := samples.New(db, sheets, samples.ClientOptions{
 		SheetID:       c.SheetID,
@@ -103,8 +133,42 @@ func main() {
 	}
 
 	for _, sample := range clientSamples {
-		fmt.Printf("%s, %s, %s, %d, %s, %s\n",
-			sample.SampleID, sample.StudyID, sample.RunID,
-			sample.Replicate, sample.LibraryID, sample.Cutadapt5First)
+		bytes, _ := json.MarshalIndent(sample, "", "  ") //nolint:errcheck,errchkjson
+		fmt.Println(string(bytes))
 	}
+
+	experiment := "762_808"
+	fmt.Printf("\nIf first sample above was selected, and experiment was %s, command lines would be:\n\n", experiment)
+
+	itl, err := itl.New(clientSamples[0:1])
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	cmd1, tsvPath := itl.GenerateSamplesTSVCommand()
+	cmd2, fastqDir := itl.CreateFastqsCommand(tsvPath)
+
+	fmt.Printf("$ %s\n\n$ %s\n\n", cmd1, cmd2)
+
+	design := dimsum.NewExperimentDesign(clientSamples[0:1])
+
+	dir := "./"
+
+	_, err = design.Write(dir, experiment)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	exe := "/path/to/DiMSum"
+	vsearchMinQual := 20
+	startStage := 0
+	fitnessMinInputCountAny := 10
+	fitnessMinInputCountAll := 0
+	barcodeIdentityPath := "barcode_identity.txt"
+
+	d := dimsum.New(exe, fastqDir, barcodeIdentityPath, experiment, vsearchMinQual, startStage,
+		fitnessMinInputCountAny, fitnessMinInputCountAll)
+	cmd3 := d.Command(dir, clientSamples[0].LibraryMetaData)
+
+	fmt.Printf("$ %s\n", cmd3)
 }
