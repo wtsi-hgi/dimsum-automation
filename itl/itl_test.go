@@ -83,7 +83,7 @@ func TestITL(t *testing.T) {
 				fmt.Sprintf(
 					"irods_to_lustre --run_mode study_id --input_studies %s "+
 						"--samples_to_process -1 --run_imeta_study true --run_iget_study_cram false "+
-						"--run_merge_crams false --run_crams_to_fastq false --filter_manual_qc false "+
+						"--run_merge_crams false --run_crams_to_fastq false --filter_manual_qc true "+
 						"--outdir %s -w %s",
 					studyID, tsvOutputDir, tsvWorkDir,
 				),
@@ -96,7 +96,7 @@ func TestITL(t *testing.T) {
 				fmt.Sprintf(
 					"irods_to_lustre --run_mode csv_samples_id --input_samples_csv %s "+
 						"--samples_to_process -1 --run_imeta_study false --run_iget_study_cram true "+
-						"--run_merge_crams true --run_crams_to_fastq true --filter_manual_qc false "+
+						"--run_merge_crams true --run_crams_to_fastq true --filter_manual_qc true "+
 						"--outdir %s -w %s",
 					tsvPath, fastqOutputDir, fastqWorkDir,
 				),
