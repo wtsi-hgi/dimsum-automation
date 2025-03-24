@@ -154,7 +154,7 @@ func main() {
 
 	dir := "./"
 
-	_, err = design.Write(dir, experiment)
+	experimentPath, err := design.Write(dir, experiment)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -170,5 +170,5 @@ func main() {
 		fitnessMinInputCountAny, fitnessMinInputCountAll)
 	cmd3 := d.Command(dir, clientSamples[0].LibraryMetaData)
 
-	fmt.Printf("$ %s\n", cmd3)
+	fmt.Printf("$ %s\n\nNB: %s was created, but barcode_identity.txt is a placeholder\n", cmd3, experimentPath)
 }
