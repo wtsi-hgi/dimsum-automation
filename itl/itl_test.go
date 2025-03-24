@@ -78,7 +78,7 @@ func TestITL(t *testing.T) {
 			sort.Strings(itl.sampleIDs)
 			So(itl.sampleIDs, ShouldResemble, []string{sampleID1, sampleID2})
 
-			cmd := itl.GenerateSamplesTSVCommand()
+			cmd, tsvPath := itl.GenerateSamplesTSVCommand()
 			So(cmd, ShouldEqual,
 				fmt.Sprintf(
 					"irods_to_lustre --run_mode study_id --input_studies %s "+
@@ -88,8 +88,7 @@ func TestITL(t *testing.T) {
 					studyID, tsvOutputDir, tsvWorkDir,
 				),
 			)
-
-			tsvPath := "/path/to/tsv"
+			So(tsvPath, ShouldEqual, tsvOutputPath)
 
 			cmd, outputDir := itl.CreateFastqsCommand(tsvPath)
 			So(cmd, ShouldEqual,

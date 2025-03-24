@@ -41,6 +41,7 @@ const (
 	ErrMultipleStudies = Error("samples from multiple studies")
 
 	tsvOutputDir   = "./tsv_output"
+	tsvOutputPath  = tsvOutputDir + "metadata/samples.tsv"
 	tsvWorkDir     = "./tsv_work"
 	fastqOutputDir = "./fastq_output"
 	fastqWorkDir   = "./fastq_work"
@@ -88,15 +89,16 @@ func New(inputSamples []samples.Sample) (*ITL, error) {
 }
 
 // GenerateSamplesTSVCommand returns a command line for irods_to_lustre that
-// will generate a TSV file of the sample metadata for our study.
-func (i *ITL) GenerateSamplesTSVCommand() string {
+// will generate a TSV file of the sample metadata for our study. It also
+// returns the path to that TSV file.
+func (i *ITL) GenerateSamplesTSVCommand() (string, string) {
 	return fmt.Sprintf(
 		"irods_to_lustre --run_mode study_id --input_studies %s "+
 			"--samples_to_process -1 --run_imeta_study true --run_iget_study_cram false "+
 			"--run_merge_crams false --run_crams_to_fastq false --filter_manual_qc true "+
 			"--outdir %s -w %s",
 		i.studyID, tsvOutputDir, tsvWorkDir,
-	)
+	), tsvOutputPath
 }
 
 // CreateFastqsCommand returns a command line for irods_to_lustre that will
