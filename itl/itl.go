@@ -41,7 +41,7 @@ const (
 	ErrMultipleStudies = Error("samples from multiple studies")
 
 	tsvOutputDir   = "./tsv_output"
-	tsvOutputPath  = tsvOutputDir + "metadata/samples.tsv"
+	tsvOutputPath  = tsvOutputDir + "/metadata/samples.tsv"
 	tsvWorkDir     = "./tsv_work"
 	fastqOutputDir = "./fastq_output"
 	fastqWorkDir   = "./fastq_work"
