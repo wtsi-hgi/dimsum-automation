@@ -101,8 +101,48 @@ func main() {
 	// 	fmt.Printf("%s, %s, %s\n", sample.SampleName, sample.SampleID, sample.StudyName)
 	// }
 
+	allSame := make(map[string]int)
+	diffRun := make(map[string]map[string]bool)
+	diffStudy := make(map[string]map[string]bool)
+
 	for _, sample := range mlwhSamples {
+		allSame[sample.SampleName+":"+sample.RunID+":"+sample.StudyID]++
+
+		key := sample.SampleName + ":" + sample.StudyID
+		if diffRun[key] == nil {
+			diffRun[key] = make(map[string]bool)
+		}
+
+		diffRun[key][sample.RunID] = true
+
+		key = sample.SampleName + ":" + sample.RunID
+		if diffStudy[key] == nil {
+			diffStudy[key] = make(map[string]bool)
+		}
+
+		diffStudy[key][sample.StudyID] = true
+
 		sampleNames = append(sampleNames, sample.SampleName)
+	}
+
+	if false { //nolint:nestif
+		for key, count := range allSame {
+			if count > 1 {
+				fmt.Printf("Sample %s appears %d times\n", key, count) // 2 of these
+			}
+		}
+
+		for key, runMap := range diffRun {
+			if len(runMap) > 1 {
+				fmt.Printf("Sample %s has %d different run IDs\n", key, len(runMap)) // many of these
+			}
+		}
+
+		for key, studyMap := range diffStudy {
+			if len(studyMap) > 1 {
+				fmt.Printf("Sample %s has %d different study IDs\n", key, len(studyMap)) // none of these
+			}
+		}
 	}
 
 	sort.Strings(sampleNames)
