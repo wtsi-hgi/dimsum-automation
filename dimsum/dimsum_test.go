@@ -96,6 +96,7 @@ func TestDimsum(t *testing.T) {
 					Pair1:         sample1 + "." + run + pair1FastqSuffix,
 					Pair2:         sample1 + "." + run + pair2FastqSuffix,
 					CellDensity:   0.1,
+					Generations:   float32(1),
 					SelectionTime: 0.5,
 				},
 				{
@@ -106,6 +107,7 @@ func TestDimsum(t *testing.T) {
 					Pair1:         sample2 + "." + run + pair1FastqSuffix,
 					Pair2:         sample2 + "." + run + pair2FastqSuffix,
 					CellDensity:   0.2,
+					Generations:   float32(2),
 					SelectionTime: 0.6,
 				},
 			})
@@ -125,10 +127,10 @@ func TestDimsum(t *testing.T) {
 			So(string(d), ShouldEqual, fmt.Sprintf(
 				"sample_name\texperiment_replicate\tselection_id\tselection_replicate\ttechnical_replicate\t"+
 					"pair1\tpair2\tgenerations\tcell_density\tselection_time\n"+
-					"%s\t%d\t%d\t%s\t%d\t%s.run_1.fastq.gz\t%s.run_2.fastq.gz\t%s\t%.3f\t%.1f\n"+
-					"%s\t%d\t%d\t%s\t%d\t%s.run_1.fastq.gz\t%s.run_2.fastq.gz\t%s\t%.3f\t%.1f\n",
-				sample1, ts0m.Replicate, ts0m.Selection, "", 1, sample1, sample1, "", ts0m.OD, ts0m.Time,
-				sample2, ts1m.Replicate, ts1m.Selection, "1", 1, sample2, sample2, "", ts1m.OD, ts1m.Time,
+					"%s\t%d\t%d\t%s\t%d\t%s.run_1.fastq.gz\t%s.run_2.fastq.gz\t%d\t%.3f\t%.1f\n"+
+					"%s\t%d\t%d\t%s\t%d\t%s.run_1.fastq.gz\t%s.run_2.fastq.gz\t%d\t%.3f\t%.1f\n",
+				sample1, ts0m.Replicate, ts0m.Selection, "", 1, sample1, sample1, 1, ts0m.OD, ts0m.Time,
+				sample2, ts1m.Replicate, ts1m.Selection, "1", 1, sample2, sample2, 2, ts1m.OD, ts1m.Time,
 			))
 
 			Convey("Then you can generate a dimsum command line", func() {

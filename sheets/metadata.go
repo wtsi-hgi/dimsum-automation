@@ -27,12 +27,15 @@
 package sheets
 
 import (
+	"math"
 	"strconv"
 )
 
 const (
 	ErrNoData         = Error("no data found in sheet")
 	ErrMissingLibrary = Error("sample library not found in Libraries sheet")
+
+	generationsMin = 0.05
 )
 
 // LibraryMetaData holds library metadata needed by DimSum.
@@ -51,6 +54,16 @@ type MetaData struct {
 	Time      float32
 	OD        float32
 	LibraryMetaData
+}
+
+// Generations is the amount of times the cells have divided between 0.05 and
+// the OD, ie. log2(OD/0.05).
+func (m MetaData) Generations() float32 {
+	if m.OD == 0 {
+		return 0
+	}
+
+	return float32(math.Log2(float64(m.OD / generationsMin)))
 }
 
 // DimSumMetaData reads sheets "Libraries" and "Samples" from the sheet with the
