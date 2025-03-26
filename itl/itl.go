@@ -28,9 +28,7 @@ package itl
 
 import (
 	"fmt"
-	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/wtsi-hgi/dimsum-automation/samples"
 )
@@ -42,7 +40,6 @@ func (e Error) Error() string { return string(e) }
 const (
 	ErrNoStudies       = Error("no samples with studies provided")
 	ErrMultipleStudies = Error("samples from multiple studies")
-	ErrNoSamplesFound  = Error("no matching samples found in TSV file")
 
 	tsvOutputDir      = "./tsv_output"
 	tsvOutputPath     = tsvOutputDir + "/metadata/samples.tsv"
@@ -52,6 +49,7 @@ const (
 	fastqOutputSubDir = "fastq"
 	fastqFinalDir     = fastqOutputDir + "/" + fastqOutputSubDir
 	minTSVColumns     = 4
+	tsvExtension      = ".tsv"
 
 	userPerm = 0700
 )
@@ -63,6 +61,10 @@ type sampleRun struct {
 
 func (s sampleRun) Key() string {
 	return fmt.Sprintf("%s.%s", s.sampleID, s.runID)
+}
+
+func (s sampleRun) TSVPath(outputDir string) string {
+	return filepath.Join(outputDir, s.Key()+tsvExtension)
 }
 
 // ITL lets you use irods_to_lustre to get fastqs for certain samples.
@@ -149,42 +151,4 @@ func (i *ITL) FilterSamplesTSV(inputTSVPath, outputDir string) ([]FastqCreator, 
 	}
 
 	return fcs, nil
-}
-
-func createPerSampleRunTSV(inputTSVPath, outputDir string, sr sampleRun) (string, error) {
-	data, err := os.ReadFile(inputTSVPath)
-	if err != nil {
-		return "", err
-	}
-
-	lines := strings.Split(string(data), "\n")
-	if len(lines) == 0 {
-		return "", ErrNoSamplesFound
-	}
-
-	outPath := filepath.Join(outputDir, sr.Key()+".tsv")
-	filteredLines := []string{lines[0]}
-
-	for _, line := range lines[1:] {
-		if line == "" {
-			continue
-		}
-
-		fields := strings.Split(line, "\t")
-		if len(fields) < minTSVColumns {
-			continue
-		}
-
-		if fields[1] == sr.sampleID && fields[3] == sr.runID {
-			filteredLines = append(filteredLines, line)
-		}
-	}
-
-	if len(filteredLines) == 0 {
-		return "", ErrNoSamplesFound
-	}
-
-	output := strings.Join(filteredLines, "\n") + "\n"
-
-	return outPath, os.WriteFile(outPath, []byte(output), userPerm)
 }
