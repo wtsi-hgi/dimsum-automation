@@ -28,7 +28,14 @@ package itl
 
 import (
 	"fmt"
+	"io"
+	"os"
 	"path/filepath"
+)
+
+const (
+	fastqOutputPathSuffix = ".output"
+	fastqOutputSubDir     = "fastq"
 )
 
 // FastqCreator is a struct that holds the information needed to create fastq
@@ -42,13 +49,54 @@ type FastqCreator struct {
 // Command returns a command line for irods_to_lustre that will use our TSV file
 // to download crams and convert them to FASTQs.
 func (fc *FastqCreator) Command() string {
-	outputPath := filepath.Join(fc.outputDir, fc.sampleRun.Key())
+	outputPath := fc.outputPathPrefix()
 
 	return fmt.Sprintf(
 		"irods_to_lustre --run_mode csv_samples_id --input_samples_csv %s "+
 			"--samples_to_process -1 --run_imeta_study false --run_iget_study_cram true "+
 			"--run_merge_crams true --run_crams_to_fastq true --filter_manual_qc true "+
-			"--outdir %s.output -w %s.work",
-		fc.tsvPath, outputPath, outputPath,
+			"--outdir %s%s -w %s.work",
+		fc.tsvPath, outputPath, fastqOutputPathSuffix, outputPath,
 	)
+}
+
+func (fc *FastqCreator) outputPathPrefix() string {
+	return filepath.Join(fc.outputDir, fc.sampleRun.Key())
+}
+
+// CopyFastqFiles copies the fastq files created by irods_to_lustre to the given
+// directory, renaming them to be based on sampleRun instead of just sampleID.
+func (fc *FastqCreator) CopyFastqFiles(finalDir string) error {
+	sourceDir := filepath.Join(fc.outputPathPrefix()+fastqOutputPathSuffix, fastqOutputSubDir)
+
+	for _, suffix := range []string{"_1.fastq.gz", "_2.fastq.gz", ".fastq.gz"} {
+		sourceFile := filepath.Join(sourceDir, fc.sampleRun.sampleID+suffix)
+		destFile := filepath.Join(finalDir, fc.sampleRun.Key()+suffix)
+
+		if err := copyFile(sourceFile, destFile); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+
+	return err
 }

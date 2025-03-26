@@ -72,7 +72,7 @@ func TestITL(t *testing.T) {
 			},
 		}
 
-		Convey("You can generate irods_to_lustre command lines", func() {
+		Convey("You can generate irods_to_lustre command lines, filter the initial tsv, and copy the fastqs", func() {
 			testSamplesTSVPath, err := filepath.Abs(filepath.Join("testdata", "samples.tsv"))
 			So(err, ShouldBeNil)
 
@@ -121,16 +121,30 @@ func TestITL(t *testing.T) {
 					),
 				)
 
-				actual, expected := fileContents(
-					filepath.Join(".", sampleRun+".tsv"),
-					testSamplesTSVPath+"."+sampleRun,
-				)
-				So(actual, ShouldEqual, expected)
+				So(fileContents(
+					filepath.Join(".", sampleRun+".tsv")),
+					ShouldEqual,
+					fileContents(testSamplesTSVPath+"."+sampleRun))
 
 				err = createTestFastqFiles(sampleRun)
 				So(err, ShouldBeNil)
 
-				// TODO: function to move the fastq files to the right place
+				finalDir := filepath.Join(dir, "final")
+
+				err = os.MkdirAll(finalDir, userPerm)
+				So(err, ShouldBeNil)
+
+				err = fcs[i].CopyFastqFiles(finalDir)
+				So(err, ShouldBeNil)
+
+				for _, suffix := range []string{"_1.fastq.gz", "_2.fastq.gz", ".fastq.gz"} {
+					expectedBasename := sampleRun[:7] + "_id" + suffix
+
+					So(fileContents(
+						filepath.Join(finalDir, sampleRun+suffix)),
+						ShouldEqual,
+						fileContents(filepath.Join(sampleRun+".output", fastqOutputSubDir, expectedBasename)))
+				}
 			}
 		})
 
@@ -152,18 +166,13 @@ func TestITL(t *testing.T) {
 	})
 }
 
-func fileContents(path1, path2 string) (string, string) {
-	file1, err := os.ReadFile(path1)
+func fileContents(path string) string {
+	contents, err := os.ReadFile(path)
 	if err != nil {
-		return err.Error(), ""
+		return err.Error()
 	}
 
-	file2, err := os.ReadFile(path2)
-	if err != nil {
-		return "", err.Error()
-	}
-
-	return string(file1), string(file2)
+	return string(contents)
 }
 
 func createTestFastqFiles(sampleRun string) error {

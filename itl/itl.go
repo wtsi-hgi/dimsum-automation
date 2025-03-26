@@ -41,15 +41,14 @@ const (
 	ErrNoStudies       = Error("no samples with studies provided")
 	ErrMultipleStudies = Error("samples from multiple studies")
 
-	tsvOutputDir      = "./tsv_output"
-	tsvOutputPath     = tsvOutputDir + "/metadata/samples.tsv"
-	tsvWorkDir        = "./tsv_work"
-	fastqOutputDir    = "./fastq_output"
-	fastqWorkDir      = "./fastq_work"
-	fastqOutputSubDir = "fastq"
-	fastqFinalDir     = fastqOutputDir + "/" + fastqOutputSubDir
-	minTSVColumns     = 4
-	tsvExtension      = ".tsv"
+	tsvOutputDir   = "./tsv_output"
+	tsvOutputPath  = tsvOutputDir + "/metadata/samples.tsv"
+	tsvWorkDir     = "./tsv_work"
+	fastqOutputDir = "./fastq_output"
+	fastqWorkDir   = "./fastq_work"
+	fastqFinalDir  = fastqOutputDir + "/" + fastqOutputSubDir
+	minTSVColumns  = 4
+	tsvExtension   = ".tsv"
 
 	userPerm = 0700
 )
