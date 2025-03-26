@@ -36,7 +36,13 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
+type Error string
+
+func (e Error) Error() string { return string(e) }
+
 const (
+	ErrMultipleExperiments = Error("multiple experiments in samples")
+
 	DefaultFastqExtension          = ".fastq"
 	DefaultGzipped                 = true
 	DefaultCutAdaptMinLength       = 100
@@ -60,12 +66,9 @@ const (
 	dimsumProjectPrefix = "dimsumRun_"
 )
 
-type Error string
-
-func (e Error) Error() string { return string(e) }
-
 // Experiment represents a single experiment's metadata.
 type Experiment struct {
+	ID            string  // ID is the unique identifier for the experiment.
 	SampleID      string  // SampleID is the unique identifier for the sample.
 	Replicate     int     // Replicate is the replicate number of the experiment.
 	Selection     int     // Selection is the selection number of the experiment.
@@ -87,31 +90,39 @@ func (e Experiment) SelectionReplicate() string {
 type ExperimentDesign []Experiment
 
 // NewExperimentDesign creates an experiment design from the given samples.
-func NewExperimentDesign(samples []samples.Sample) ExperimentDesign {
+// It returns an error if there are multiple experiments in the samples.
+func NewExperimentDesign(samples []samples.Sample) (ExperimentDesign, error) {
 	design := make(ExperimentDesign, 0, len(samples))
+
+	experiments := make(map[string]int)
 
 	for _, sample := range samples {
 		exp := Experiment{
-			SampleID:      sample.Sample.SampleID,
-			Replicate:     sample.MetaData.Replicate,
-			Selection:     sample.MetaData.Selection,
-			Pair1:         sample.Sample.SampleID + pair1FastqSuffix,
-			Pair2:         sample.Sample.SampleID + pair2FastqSuffix,
-			CellDensity:   sample.MetaData.OD,
-			SelectionTime: sample.MetaData.Time,
+			ID:            sample.ExperimentID,
+			SampleID:      sample.SampleID,
+			Replicate:     sample.Replicate,
+			Selection:     sample.Selection,
+			Pair1:         sample.SampleID + "." + sample.RunID + pair1FastqSuffix,
+			Pair2:         sample.SampleID + "." + sample.RunID + pair2FastqSuffix,
+			CellDensity:   sample.OD,
+			SelectionTime: sample.Time,
 		}
 
 		design = append(design, exp)
+		experiments[exp.ID]++
 	}
 
-	return design
+	if len(experiments) > 1 {
+		return nil, ErrMultipleExperiments
+	}
+
+	return design, nil
 }
 
-// Write writes an experiment design to a file that includes the given
-// experiment in the basename in the given directory and returns the path to the
-// file.
-func (ed ExperimentDesign) Write(dir, experiment string) (string, error) {
-	designPath := experimentDesignPath(dir, experiment)
+// Write writes an experiment design to a file that includes our ID in the
+// basename in the given directory and returns the path to the file.
+func (ed ExperimentDesign) Write(dir string) (string, error) {
+	designPath := experimentDesignPath(dir, ed[0].ID)
 
 	file, err := os.Create(designPath)
 	if err != nil {

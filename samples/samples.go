@@ -263,6 +263,7 @@ func newSample(s mlwh.Sample, meta sheets.MetaData) Sample {
 			OD:        meta.OD,
 			LibraryMetaData: sheets.LibraryMetaData{
 				LibraryID:       meta.LibraryID,
+				ExperimentID:    meta.ExperimentID,
 				Wt:              meta.Wt,
 				Cutadapt5First:  meta.Cutadapt5First,
 				Cutadapt5Second: meta.Cutadapt5Second,

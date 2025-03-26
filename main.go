@@ -177,8 +177,7 @@ func main() {
 		fmt.Println(string(bytes))
 	}
 
-	experiment := "762_808"
-	fmt.Printf("\nIf first sample above was selected, and experiment was %s, command lines would be:\n\n", experiment)
+	fmt.Printf("\nIf first sample above was selected, command lines would be:\n\n")
 
 	itl, err := itl.New(clientSamples[0:1])
 	if err != nil {
@@ -186,21 +185,26 @@ func main() {
 	}
 
 	cmd1, _ := itl.GenerateSamplesTSVCommand()
-	fmt.Printf("$ %s\n\n\n", cmd1)
-	// cmd2, fastqDir := itl.CreateFastqsCommand(tsvPath)
-	fastqDir := "./fastq_dir"
+	fmt.Printf(
+		"$ %s\n\n[\n and then the tsv output would be split in to per-desired sample-run files\n"+
+			" and then irods_to_lustre run on each to get the fastq files,\n"+
+			" which would be moved to a certain folder\n]\n\n",
+		cmd1,
+	)
 
-	// fmt.Printf("$ %s\n\n$ %s\n\n", cmd1, cmd2)
-
-	design := dimsum.NewExperimentDesign(clientSamples[0:1])
-
-	dir := "./"
-
-	experimentPath, err := design.Write(dir, experiment)
+	design, err := dimsum.NewExperimentDesign(clientSamples[0:1])
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	dir := "./"
+
+	experimentPath, err := design.Write(dir)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fastqDir := "./fastq_dir"
 	exe := "/path/to/DiMSum"
 	vsearchMinQual := 20
 	startStage := 0
@@ -208,7 +212,7 @@ func main() {
 	fitnessMinInputCountAll := 0
 	barcodeIdentityPath := "barcode_identity.txt"
 
-	d := dimsum.New(exe, fastqDir, barcodeIdentityPath, experiment, vsearchMinQual, startStage,
+	d := dimsum.New(exe, fastqDir, barcodeIdentityPath, design[0].ID, vsearchMinQual, startStage,
 		fitnessMinInputCountAny, fitnessMinInputCountAll)
 	cmd3 := d.Command(dir, clientSamples[0].LibraryMetaData)
 

@@ -38,6 +38,7 @@ const (
 // LibraryMetaData holds library metadata needed by DimSum.
 type LibraryMetaData struct {
 	LibraryID       string
+	ExperimentID    string
 	Wt              string
 	Cutadapt5First  string
 	Cutadapt5Second string
@@ -119,6 +120,7 @@ func (s *Sheets) getLibraryMetaData(sheetID string) (map[string]LibraryMetaData,
 
 	libRows, err := sheet.Columns(
 		"library_id",
+		"experiment_id",
 		"dimsum_wt",
 		"dimsum_cutadapt5First",
 		"dimsum_cutadapt5Second",
@@ -130,11 +132,12 @@ func (s *Sheets) getLibraryMetaData(sheetID string) (map[string]LibraryMetaData,
 	m := make(map[string]LibraryMetaData, len(libRows))
 
 	for _, row := range libRows {
-		m[row[0]] = LibraryMetaData{
+		m[row[1]] = LibraryMetaData{
 			LibraryID:       row[0],
-			Wt:              row[1],
-			Cutadapt5First:  row[2],
-			Cutadapt5Second: row[3],
+			ExperimentID:    row[1],
+			Wt:              row[2],
+			Cutadapt5First:  row[3],
+			Cutadapt5Second: row[4],
 		}
 	}
 

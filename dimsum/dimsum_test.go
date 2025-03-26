@@ -40,11 +40,14 @@ import (
 
 func TestDimsum(t *testing.T) {
 	Convey("Given library and sample info", t, func() {
+		exp := "exp"
 		sample1 := "sample1"
 		sample2 := "sample2"
+		run := "run"
 
 		libMeta := sheets.LibraryMetaData{
 			LibraryID:       "lib1",
+			ExperimentID:    exp,
 			Wt:              "wt",
 			Cutadapt5First:  "ACTG",
 			Cutadapt5Second: "TCGA",
@@ -54,6 +57,7 @@ func TestDimsum(t *testing.T) {
 			{
 				Sample: mlwh.Sample{
 					SampleID: sample1,
+					RunID:    run,
 				},
 				MetaData: sheets.MetaData{
 					Selection:       0,
@@ -66,6 +70,7 @@ func TestDimsum(t *testing.T) {
 			{
 				Sample: mlwh.Sample{
 					SampleID: sample2,
+					RunID:    run,
 				},
 				MetaData: sheets.MetaData{
 					Selection:       1,
@@ -80,33 +85,35 @@ func TestDimsum(t *testing.T) {
 		Convey("You can generate an experiment design file", func() {
 			dir := t.TempDir()
 
-			design := NewExperimentDesign(testSamples)
+			design, err := NewExperimentDesign(testSamples)
+			So(err, ShouldBeNil)
 			So(design, ShouldResemble, ExperimentDesign{
 				{
+					ID:            exp,
 					SampleID:      sample1,
 					Replicate:     1,
 					Selection:     0,
-					Pair1:         sample1 + pair1FastqSuffix,
-					Pair2:         sample1 + pair2FastqSuffix,
+					Pair1:         sample1 + "." + run + pair1FastqSuffix,
+					Pair2:         sample1 + "." + run + pair2FastqSuffix,
 					CellDensity:   0.1,
 					SelectionTime: 0.5,
 				},
 				{
+					ID:            exp,
 					SampleID:      sample2,
 					Replicate:     2,
 					Selection:     1,
-					Pair1:         sample2 + pair1FastqSuffix,
-					Pair2:         sample2 + pair2FastqSuffix,
+					Pair1:         sample2 + "." + run + pair1FastqSuffix,
+					Pair2:         sample2 + "." + run + pair2FastqSuffix,
 					CellDensity:   0.2,
 					SelectionTime: 0.6,
 				},
 			})
 
-			experiment := "762_808"
-			designPath, err := design.Write(dir, experiment)
+			designPath, err := design.Write(dir)
 			So(err, ShouldBeNil)
 			So(designPath, ShouldEqual,
-				filepath.Join(dir, experimentDesignPrefix+experiment+experimentDesignSuffix))
+				filepath.Join(dir, experimentDesignPrefix+exp+experimentDesignSuffix))
 
 			ts0 := testSamples[0]
 			ts0m := ts0.MetaData
@@ -118,8 +125,8 @@ func TestDimsum(t *testing.T) {
 			So(string(d), ShouldEqual, fmt.Sprintf(
 				"sample_name\texperiment_replicate\tselection_id\tselection_replicate\ttechnical_replicate\t"+
 					"pair1\tpair2\tgenerations\tcell_density\tselection_time\n"+
-					"%s\t%d\t%d\t%s\t%d\t%s_1.fastq.gz\t%s_2.fastq.gz\t%s\t%.3f\t%.1f\n"+
-					"%s\t%d\t%d\t%s\t%d\t%s_1.fastq.gz\t%s_2.fastq.gz\t%s\t%.3f\t%.1f\n",
+					"%s\t%d\t%d\t%s\t%d\t%s.run_1.fastq.gz\t%s.run_2.fastq.gz\t%s\t%.3f\t%.1f\n"+
+					"%s\t%d\t%d\t%s\t%d\t%s.run_1.fastq.gz\t%s.run_2.fastq.gz\t%s\t%.3f\t%.1f\n",
 				sample1, ts0m.Replicate, ts0m.Selection, "", 1, sample1, sample1, "", ts0m.OD, ts0m.Time,
 				sample2, ts1m.Replicate, ts1m.Selection, "1", 1, sample2, sample2, "", ts1m.OD, ts1m.Time,
 			))
@@ -133,7 +140,7 @@ func TestDimsum(t *testing.T) {
 				fitnessMinInputCountAll := 0
 				barcodeIdentityPath := "barcode_identity.txt"
 
-				dimsum := New(exe, fastqDir, barcodeIdentityPath, experiment, vsearchMinQual, startStage,
+				dimsum := New(exe, fastqDir, barcodeIdentityPath, exp, vsearchMinQual, startStage,
 					fitnessMinInputCountAny, fitnessMinInputCountAll)
 				So(dimsum, ShouldNotBeNil)
 
@@ -149,7 +156,7 @@ func TestDimsum(t *testing.T) {
 					libMeta.Cutadapt5First+cutAdaptRequired+"TCGA"+cutAdaptOptional,
 					libMeta.Cutadapt5Second+cutAdaptRequired+"CAGT"+cutAdaptOptional,
 					DefaultCutAdaptMinLength, DefaultCutAdaptErrorRate,
-					vsearchMinQual, filepath.Join(dir, outputSubdir), dimsumProjectPrefix+experiment,
+					vsearchMinQual, filepath.Join(dir, outputSubdir), dimsumProjectPrefix+exp,
 					startStage, libMeta.Wt, DefaultCores, fitnessMinInputCountAny,
 					fitnessMinInputCountAll, DefaultMaxSubstitutions,
 					DefaultMutagenesisType, "T", "F", "F", barcodeIdentityPath,

@@ -120,12 +120,14 @@ func TestSamplesMock(t *testing.T) {
 		}
 		mlwhQueryTime := 100 * time.Millisecond
 		mclient := &mockMLWH{msamples: msamples, queryTime: mlwhQueryTime}
+		exp := "exp"
+		libMeta := sheets.LibraryMetaData{ExperimentID: exp}
 
 		smeta := map[string]sheets.MetaData{
-			"sample1": {Replicate: 1},
-			"sample3": {Replicate: 2},
-			"sample4": {Replicate: 3},
-			"sample5": {Replicate: 4},
+			"sample1": {Replicate: 1, LibraryMetaData: libMeta},
+			"sample3": {Replicate: 2, LibraryMetaData: libMeta},
+			"sample4": {Replicate: 3, LibraryMetaData: libMeta},
+			"sample5": {Replicate: 4, LibraryMetaData: libMeta},
 		}
 		sclient := &mockSheets{smeta: smeta}
 
@@ -251,6 +253,7 @@ func TestSamplesReal(t *testing.T) {
 			So(samples[0].Replicate, ShouldBeGreaterThan, 0)
 			So(samples[0].OD, ShouldBeGreaterThan, 0)
 			So(samples[0].LibraryID, ShouldNotBeEmpty)
+			So(samples[0].ExperimentID, ShouldNotBeEmpty)
 			So(samples[0].Wt, ShouldNotBeEmpty)
 			So(samples[0].Cutadapt5First, ShouldNotBeEmpty)
 			So(samples[0].Cutadapt5Second, ShouldNotBeEmpty)

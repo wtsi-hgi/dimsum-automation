@@ -58,7 +58,7 @@ func TestSheets(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(sheetL, ShouldNotBeNil)
 			So(sheetL.ColumnHeaders, ShouldResemble, []string{
-				"library_id", "dimsum_wt", "dimsum_cutadapt5First", "dimsum_cutadapt5Second",
+				"library_id", "experiment_id", "dimsum_wt", "dimsum_cutadapt5First", "dimsum_cutadapt5Second",
 				"dimsum_maxSubstitutions", "barcoded", "Assay", "uniprot_id", "organism",
 				"uniprot_WT", "binder_uniprot_id", "...",
 			})
@@ -83,10 +83,11 @@ func TestSheets(t *testing.T) {
 			So(err, ShouldNotBeNil)
 
 			Convey("Then get specific columns of information", func() {
-				cols, err := sheetL.Columns("library_id", "dimsum_wt", "dimsum_cutadapt5First", "dimsum_cutadapt5Second")
+				cols, err := sheetL.Columns("library_id", "experiment_id",
+					"dimsum_wt", "dimsum_cutadapt5First", "dimsum_cutadapt5Second")
 				So(err, ShouldBeNil)
 				So(len(cols), ShouldBeGreaterThan, 0)
-				So(len(cols[0]), ShouldEqual, 4)
+				So(len(cols[0]), ShouldEqual, 5)
 
 				_, err = sheetL.Columns("library_id", "foo")
 				So(err, ShouldNotBeNil)
@@ -103,7 +104,8 @@ func TestSheets(t *testing.T) {
 				Time:      34.5,
 				OD:        1.27,
 				LibraryMetaData: LibraryMetaData{
-					LibraryID:       "762_abundance",
+					LibraryID:       "762",
+					ExperimentID:    "762_abundance",
 					Wt:              "AAGGTCATGGAAATAAAGCTGATCAAGGGCCCAAAAGGACTTGGGTTCTCTATCGCAGGCGGAGTTGGCAACCAGCATATCCCCGGGGATAACTCAATCTACGTAACCAAAATTATCGAAGGCGGGGCAGCTCATAAGGATGGTCGACTT",
 					Cutadapt5First:  "GGGAGGTGGAGCTAGC",
 					Cutadapt5Second: "GCCAAGATTTTATCTCCAATTTG",
