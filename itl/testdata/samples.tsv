@@ -1,0 +1,7 @@
+object	sample	study_id	id_run	lane	is_paired_read	alignment	tag_index	total_reads	md5	sample_supplier_name	study	manual_qc
+/zone/1#1.cram	sample1_id	study1	run1	1	1	0	1	1123	a9f529db6f94a56af2ed658e1e0eb50b	sample1	study 1 desc	1
+/zone/2#1.cram	sample1_id	study1	run2	1	1	0	1	1123	a9f529db6f94a56af2ed658e1e0eb50b	sample1	study 1 desc	1
+/zone/3#1.cram	sample2_id	study1	run1	1	1	0	1	1123	a9f529db6f94a56af2ed658e1e0eb50b	sample2	study 1 desc	1
+/zone/4#1.cram	sample3_id	study1	run1	1	1	0	1	1123	a9f529db6f94a56af2ed658e1e0eb50b	sample3	study 1 desc	1
+/zone/5#1.cram	sample1_id	study1	run3	1	1	0	1	1123	a9f529db6f94a56af2ed658e1e0eb50b	sample1	study 1 desc	1
+/zone/6#1.cram	sample1_id	study1	run1	1	1	0	1	1123	a9f529db6f94a56af2ed658e1e0eb50c	sample1	study 1 desc	1

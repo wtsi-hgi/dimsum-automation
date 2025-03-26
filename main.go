@@ -86,7 +86,7 @@ func main() {
 	}
 
 	sort.Strings(sampleNames)
-	fmt.Printf(strings.Join(sampleNames, ",") + "\n")
+	fmt.Println(strings.Join(sampleNames, ","))
 
 	mlwhSamples, err := db.SamplesForSponsor(sponsor)
 	if err != nil {
@@ -155,7 +155,7 @@ func main() {
 		}
 	}
 
-	fmt.Printf(strings.Join(subset, ",") + "\n")
+	fmt.Println(strings.Join(subset, ","))
 
 	fmt.Printf("\nMerged sample info:\n")
 
@@ -185,10 +185,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	cmd1, tsvPath := itl.GenerateSamplesTSVCommand()
-	cmd2, fastqDir := itl.CreateFastqsCommand(tsvPath)
+	cmd1, _ := itl.GenerateSamplesTSVCommand()
+	fmt.Printf("$ %s\n\n\n", cmd1)
+	// cmd2, fastqDir := itl.CreateFastqsCommand(tsvPath)
+	fastqDir := "./fastq_dir"
 
-	fmt.Printf("$ %s\n\n$ %s\n\n", cmd1, cmd2)
+	// fmt.Printf("$ %s\n\n$ %s\n\n", cmd1, cmd2)
 
 	design := dimsum.NewExperimentDesign(clientSamples[0:1])
 

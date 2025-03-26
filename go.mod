@@ -1,6 +1,6 @@
 module github.com/wtsi-hgi/dimsum-automation
 
-go 1.23.5
+go 1.24
 
 require (
 	github.com/go-sql-driver/mysql v1.9.0

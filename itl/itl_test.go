@@ -28,7 +28,8 @@ package itl
 
 import (
 	"fmt"
-	"sort"
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -41,42 +42,52 @@ func TestITL(t *testing.T) {
 		studyID := "study1"
 		runID1 := "run1"
 		runID2 := "run2"
-		sampleID1 := "sample1"
-		sampleID2 := "sample2"
+		sampleName1 := "sample1"
+		sampleName2 := "sample2"
 
 		testSamples := []samples.Sample{
 			{
 				Sample: mlwh.Sample{
-					StudyID:  studyID,
-					RunID:    runID1,
-					SampleID: sampleID1,
+					StudyID:    studyID,
+					RunID:      runID1,
+					SampleName: sampleName1,
+					SampleID:   sampleName1 + "_id",
 				},
 			},
 			{
 				Sample: mlwh.Sample{
-					StudyID:  studyID,
-					RunID:    runID2,
-					SampleID: sampleID1,
+					StudyID:    studyID,
+					RunID:      runID2,
+					SampleName: sampleName1,
+					SampleID:   sampleName1 + "_id",
 				},
 			},
 			{
 				Sample: mlwh.Sample{
-					StudyID:  studyID,
-					RunID:    runID1,
-					SampleID: sampleID2,
+					StudyID:    studyID,
+					RunID:      runID1,
+					SampleName: sampleName2,
+					SampleID:   sampleName2 + "_id",
 				},
 			},
 		}
 
 		Convey("You can generate irods_to_lustre command lines", func() {
+			testSamplesTSVPath, err := filepath.Abs(filepath.Join("testdata", "samples.tsv"))
+			So(err, ShouldBeNil)
+
+			dir := t.TempDir()
+			t.Chdir(dir)
+
 			itl, err := New(testSamples)
 			So(err, ShouldBeNil)
 			So(itl, ShouldNotBeNil)
 			So(itl.studyID, ShouldEqual, studyID)
-			So(itl.sampleIDs, ShouldHaveLength, 2)
-
-			sort.Strings(itl.sampleIDs)
-			So(itl.sampleIDs, ShouldResemble, []string{sampleID1, sampleID2})
+			So(itl.sampleRuns, ShouldResemble, []sampleRun{
+				{sampleID: "sample1_id", runID: "run1"},
+				{sampleID: "sample1_id", runID: "run2"},
+				{sampleID: "sample2_id", runID: "run1"},
+			})
 
 			cmd, tsvPath := itl.GenerateSamplesTSVCommand()
 			So(cmd, ShouldEqual,
@@ -90,17 +101,37 @@ func TestITL(t *testing.T) {
 			)
 			So(tsvPath, ShouldEqual, tsvOutputPath)
 
-			cmd, outputDir := itl.CreateFastqsCommand(tsvPath)
-			So(cmd, ShouldEqual,
-				fmt.Sprintf(
-					"irods_to_lustre --run_mode csv_samples_id --input_samples_csv %s "+
-						"--samples_to_process -1 --run_imeta_study false --run_iget_study_cram true "+
-						"--run_merge_crams true --run_crams_to_fastq true --filter_manual_qc true "+
-						"--outdir %s -w %s",
-					tsvPath, fastqOutputDir, fastqWorkDir,
-				),
-			)
-			So(outputDir, ShouldEqual, fastqFinalDir)
+			fcs, err := itl.FilterSamplesTSV(testSamplesTSVPath, ".")
+			So(err, ShouldBeNil)
+			So(fcs, ShouldHaveLength, len(testSamples))
+
+			for i, sampleRun := range []string{
+				sampleName1 + "_id." + runID1,
+				sampleName1 + "_id." + runID2,
+				sampleName2 + "_id." + runID1,
+			} {
+				cmd := fcs[i].Command()
+				So(cmd, ShouldEqual,
+					fmt.Sprintf(
+						"irods_to_lustre --run_mode csv_samples_id --input_samples_csv %[1]s.tsv "+
+							"--samples_to_process -1 --run_imeta_study false --run_iget_study_cram true "+
+							"--run_merge_crams true --run_crams_to_fastq true --filter_manual_qc true "+
+							"--outdir %[1]s.output -w %[1]s.work",
+						sampleRun,
+					),
+				)
+
+				actual, expected := fileContents(
+					filepath.Join(".", sampleRun+".tsv"),
+					testSamplesTSVPath+"."+sampleRun,
+				)
+				So(actual, ShouldEqual, expected)
+
+				err = createTestFastqFiles(sampleRun)
+				So(err, ShouldBeNil)
+
+				// TODO: function to move the fastq files to the right place
+			}
 		})
 
 		Convey("You can't make a new ITL with samples from multiple studies, or no studies", func() {
@@ -121,4 +152,38 @@ func TestITL(t *testing.T) {
 	})
 }
 
-// TODO: test and implement a tsv filterer to pick out the samples we want
+func fileContents(path1, path2 string) (string, string) {
+	file1, err := os.ReadFile(path1)
+	if err != nil {
+		return err.Error(), ""
+	}
+
+	file2, err := os.ReadFile(path2)
+	if err != nil {
+		return "", err.Error()
+	}
+
+	return string(file1), string(file2)
+}
+
+func createTestFastqFiles(sampleRun string) error {
+	dir := filepath.Join(".", sampleRun+".output", fastqOutputSubDir)
+
+	err := os.MkdirAll(dir, userPerm)
+	if err != nil {
+		return err
+	}
+
+	sampleID := sampleRun[:7] + "_id"
+
+	for _, suffix := range []string{"_1.fastq.gz", "_2.fastq.gz", ".fastq.gz"} {
+		path := filepath.Join(dir, sampleID+suffix)
+
+		err := os.WriteFile(path, []byte(sampleRun+" "+suffix), userPerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}

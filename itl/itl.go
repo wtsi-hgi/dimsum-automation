@@ -28,6 +28,9 @@ package itl
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/wtsi-hgi/dimsum-automation/samples"
 )
@@ -39,19 +42,33 @@ func (e Error) Error() string { return string(e) }
 const (
 	ErrNoStudies       = Error("no samples with studies provided")
 	ErrMultipleStudies = Error("samples from multiple studies")
+	ErrNoSamplesFound  = Error("no matching samples found in TSV file")
 
-	tsvOutputDir   = "./tsv_output"
-	tsvOutputPath  = tsvOutputDir + "/metadata/samples.tsv"
-	tsvWorkDir     = "./tsv_work"
-	fastqOutputDir = "./fastq_output"
-	fastqWorkDir   = "./fastq_work"
-	fastqFinalDir  = fastqOutputDir + "/fastq"
+	tsvOutputDir      = "./tsv_output"
+	tsvOutputPath     = tsvOutputDir + "/metadata/samples.tsv"
+	tsvWorkDir        = "./tsv_work"
+	fastqOutputDir    = "./fastq_output"
+	fastqWorkDir      = "./fastq_work"
+	fastqOutputSubDir = "fastq"
+	fastqFinalDir     = fastqOutputDir + "/" + fastqOutputSubDir
+	minTSVColumns     = 4
+
+	userPerm = 0700
 )
+
+type sampleRun struct {
+	sampleID string
+	runID    string
+}
+
+func (s sampleRun) Key() string {
+	return fmt.Sprintf("%s.%s", s.sampleID, s.runID)
+}
 
 // ITL lets you use irods_to_lustre to get fastqs for certain samples.
 type ITL struct {
-	studyID   string
-	sampleIDs []string
+	studyID    string
+	sampleRuns []sampleRun
 }
 
 // New creates a new ITL for the given samples, checking that all samples are
@@ -66,25 +83,36 @@ func New(inputSamples []samples.Sample) (*ITL, error) {
 		return nil, ErrNoStudies
 	}
 
-	sampleIDsMap := make(map[string]struct{}, len(inputSamples))
+	sampleRunMap := make(map[string]sampleRun, len(inputSamples))
+	sampleRunOrder := make([]string, 0, len(inputSamples))
 
 	for _, sample := range inputSamples {
 		if sample.Sample.StudyID != studyID {
 			return nil, ErrMultipleStudies
 		}
 
-		sampleIDsMap[sample.Sample.SampleID] = struct{}{}
+		key := sample.Sample.SampleID + "." + sample.Sample.RunID
+		sr := sampleRun{
+			sampleID: sample.Sample.SampleID,
+			runID:    sample.Sample.RunID,
+		}
+
+		if _, exists := sampleRunMap[key]; !exists {
+			sampleRunMap[key] = sr
+
+			sampleRunOrder = append(sampleRunOrder, key)
+		}
 	}
 
-	sampleIDs := make([]string, 0, len(sampleIDsMap))
+	sampleRuns := make([]sampleRun, 0, len(sampleRunMap))
 
-	for sampleID := range sampleIDsMap {
-		sampleIDs = append(sampleIDs, sampleID)
+	for _, key := range sampleRunOrder {
+		sampleRuns = append(sampleRuns, sampleRunMap[key])
 	}
 
 	return &ITL{
-		studyID:   studyID,
-		sampleIDs: sampleIDs,
+		studyID:    studyID,
+		sampleRuns: sampleRuns,
 	}, nil
 }
 
@@ -101,17 +129,62 @@ func (i *ITL) GenerateSamplesTSVCommand() (string, string) {
 	), tsvOutputPath
 }
 
-// CreateFastqsCommand returns a command line for irods_to_lustre that will
-// use the given TSV file to download crams and convert them to FASTQs, as
-// well as the output directory where the FASTQ files will be placed.
-func (i *ITL) CreateFastqsCommand(tsvPath string) (string, string) {
-	cmd := fmt.Sprintf(
-		"irods_to_lustre --run_mode csv_samples_id --input_samples_csv %s "+
-			"--samples_to_process -1 --run_imeta_study false --run_iget_study_cram true "+
-			"--run_merge_crams true --run_crams_to_fastq true --filter_manual_qc true "+
-			"--outdir %s -w %s",
-		tsvPath, fastqOutputDir, fastqWorkDir,
-	)
+// FilterSamplesTSV creates a TSV file for each sample run in the ITL and
+// returns a slice of FastqCreator structs, each containing the path to the TSV
+// file and the output directory for that sample run.
+func (i *ITL) FilterSamplesTSV(inputTSVPath, outputDir string) ([]FastqCreator, error) {
+	fcs := make([]FastqCreator, 0, len(i.sampleRuns))
 
-	return cmd, fastqFinalDir
+	for _, sr := range i.sampleRuns {
+		tsvPath, err := createPerSampleRunTSV(inputTSVPath, outputDir, sr)
+		if err != nil {
+			return nil, err
+		}
+
+		fcs = append(fcs, FastqCreator{
+			sampleRun: sr,
+			tsvPath:   tsvPath,
+			outputDir: outputDir,
+		})
+	}
+
+	return fcs, nil
+}
+
+func createPerSampleRunTSV(inputTSVPath, outputDir string, sr sampleRun) (string, error) {
+	data, err := os.ReadFile(inputTSVPath)
+	if err != nil {
+		return "", err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	if len(lines) == 0 {
+		return "", ErrNoSamplesFound
+	}
+
+	outPath := filepath.Join(outputDir, sr.Key()+".tsv")
+	filteredLines := []string{lines[0]}
+
+	for _, line := range lines[1:] {
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Split(line, "\t")
+		if len(fields) < minTSVColumns {
+			continue
+		}
+
+		if fields[1] == sr.sampleID && fields[3] == sr.runID {
+			filteredLines = append(filteredLines, line)
+		}
+	}
+
+	if len(filteredLines) == 0 {
+		return "", ErrNoSamplesFound
+	}
+
+	output := strings.Join(filteredLines, "\n") + "\n"
+
+	return outPath, os.WriteFile(outPath, []byte(output), userPerm)
 }
