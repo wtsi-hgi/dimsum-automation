@@ -113,6 +113,7 @@ func TestDimsum(t *testing.T) {
 					SelectionTime: 0.6,
 				},
 			})
+			So(design.ID(), ShouldEqual, exp)
 
 			designPath, err := design.Write(dir)
 			So(err, ShouldBeNil)
@@ -165,6 +166,13 @@ func TestDimsum(t *testing.T) {
 					fitnessMinInputCountAll, DefaultMaxSubstitutions,
 					DefaultMutagenesisType, "T", "F", "F", barcodeIdentityPath,
 				))
+
+				dimsum = New(exe, fastqDir, "", exp, vsearchMinQual, startStage,
+					fitnessMinInputCountAny, fitnessMinInputCountAll)
+				So(dimsum, ShouldNotBeNil)
+
+				cmd = dimsum.Command(dir, libMeta)
+				So(cmd, ShouldNotContainSubstring, "--barcodeIdentityPath")
 			})
 		})
 	})

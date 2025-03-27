@@ -212,7 +212,7 @@ func main() {
 	fitnessMinInputCountAll := 0
 	barcodeIdentityPath := "barcode_identity.txt"
 
-	d := dimsum.New(exe, fastqDir, barcodeIdentityPath, design[0].ID, vsearchMinQual, startStage,
+	d := dimsum.New(exe, fastqDir, barcodeIdentityPath, design.ID(), vsearchMinQual, startStage,
 		fitnessMinInputCountAny, fitnessMinInputCountAll)
 	cmd3 := d.Command(dir, clientSamples[0].LibraryMetaData)
 

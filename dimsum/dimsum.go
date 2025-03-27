@@ -92,6 +92,13 @@ func (e Experiment) SelectionReplicate() string {
 
 type ExperimentDesign []Experiment
 
+// ID returns the ID of the first experiment in the design.
+// It is assumed that all experiments in the design have the same ID.
+// This is a precondition for the NewExperimentDesign function.
+func (ed ExperimentDesign) ID() string {
+	return ed[0].ID
+}
+
 // NewExperimentDesign creates an experiment design from the given samples.
 // It returns an error if there are multiple experiments in the samples.
 func NewExperimentDesign(samples []samples.Sample) (ExperimentDesign, error) {
@@ -161,7 +168,7 @@ type DimSum struct {
 	// Required parameters
 	Exe                     string // Path to the DiMSum executable
 	FastqDir                string // Directory containing FASTQ files
-	BarcodeIdentityPath     string // Path to the barcode identity file
+	BarcodeIdentityPath     string // Path to the barcode identity file; can be blank
 	Experiment              string // Name of the experiment
 	VSearchMinQual          int    // Minimum quality score for VSearch
 	StartStage              int    // Stage to start the analysis from
@@ -187,7 +194,7 @@ type DimSum struct {
 // Parameters:
 //   - exe: Path to the DiMSum executable.
 //   - fastqDir: Directory containing FASTQ files.
-//   - barcodeIdentityPath: Path to the barcode identity file.
+//   - barcodeIdentityPath: Path to the barcode identity file. This can be blank.
 //   - experiment: Name of the experiment.
 //   - vsearchMinQual: Minimum quality score for VSearch.
 //   - startStage: Stage to start the analysis from.
@@ -228,8 +235,7 @@ func (d *DimSum) Command(dir string, libMeta sheets.LibraryMetaData) string {
 		"-n %d -a %.2f -q %d -o %s -p %s -s %d -w %s -c %d "+
 		"--fitnessMinInputCountAny %d --fitnessMinInputCountAll %d "+
 		"--maxSubstitutions %d --mutagenesisType %s --retainIntermediateFiles %s "+
-		"--mixedSubstitutions %s --experimentDesignPairDuplicates %s "+
-		"--barcodeIdentityPath %s",
+		"--mixedSubstitutions %s --experimentDesignPairDuplicates %s",
 		d.Exe, d.FastqDir, d.FastqExtension, d.gzippedStr(), experimentDesignPath(dir, d.Experiment),
 		libMeta.Cutadapt5First+cutAdaptRequired+
 			reverseComplement(libMeta.Cutadapt5Second)+cutAdaptOptional,
@@ -240,8 +246,12 @@ func (d *DimSum) Command(dir string, libMeta sheets.LibraryMetaData) string {
 		d.StartStage, libMeta.Wt, d.Cores, d.FitnessMinInputCountAny,
 		d.FitnessMinInputCountAll, d.MaxSubstitutions,
 		d.MutagenesisType, d.retainIntermediateFilesStr(), d.mixedSubstitutionsStr(),
-		d.designPairDuplicatesStr(), d.BarcodeIdentityPath,
+		d.designPairDuplicatesStr(),
 	)
+
+	if d.BarcodeIdentityPath != "" {
+		cmd += " --barcodeIdentityPath " + d.BarcodeIdentityPath
+	}
 
 	return cmd
 }
