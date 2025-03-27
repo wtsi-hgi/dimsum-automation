@@ -69,7 +69,7 @@ const (
 // Experiment represents a single experiment's metadata.
 type Experiment struct {
 	ID          string  // ID is the unique identifier for the experiment.
-	SampleID    string  // SampleID is the unique identifier for the sample.
+	SampleName  string  // SampleName is the unique name for the sample.
 	Replicate   int     // Replicate is the replicate number of the experiment.
 	Selection   int     // Selection is the selection number of the experiment.
 	Pair1       string  // Pair1 is the filename of the first pair of FASTQ files.
@@ -101,7 +101,7 @@ func NewExperimentDesign(samples []samples.Sample) (ExperimentDesign, error) {
 	for _, sample := range samples {
 		exp := Experiment{
 			ID:            sample.ExperimentID,
-			SampleID:      sample.SampleID,
+			SampleName:    sample.SampleName,
 			Replicate:     sample.Replicate,
 			Selection:     sample.Selection,
 			Pair1:         sample.SampleID + "." + sample.RunID + pair1FastqSuffix,
@@ -139,7 +139,7 @@ func (ed ExperimentDesign) Write(dir string) (string, error) {
 
 	for _, exp := range ed {
 		line := fmt.Sprintf("%s\t%d\t%d\t%s\t%d\t%s\t%s\t%.0f\t%.3f\t%.1f\n",
-			exp.SampleID, exp.Replicate, exp.Selection, exp.SelectionReplicate(), 1,
+			exp.SampleName, exp.Replicate, exp.Selection, exp.SelectionReplicate(), 1,
 			exp.Pair1, exp.Pair2, exp.Generations, exp.CellDensity, exp.SelectionTime)
 
 		if _, err = file.WriteString(line); err != nil {
