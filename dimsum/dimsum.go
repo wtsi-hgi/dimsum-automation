@@ -32,6 +32,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/wtsi-hgi/dimsum-automation/itl"
 	"github.com/wtsi-hgi/dimsum-automation/samples"
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
@@ -95,17 +96,18 @@ type ExperimentDesign []Experiment
 // It returns an error if there are multiple experiments in the samples.
 func NewExperimentDesign(samples []samples.Sample) (ExperimentDesign, error) {
 	design := make(ExperimentDesign, 0, len(samples))
-
 	experiments := make(map[string]int)
 
 	for _, sample := range samples {
+		fastqBasenamePrefix := itl.FastqBasenamePrefix(sample.SampleID, sample.RunID)
+
 		exp := Experiment{
 			ID:            sample.ExperimentID,
 			SampleName:    sample.SampleName,
 			Replicate:     sample.Replicate,
 			Selection:     sample.Selection,
-			Pair1:         sample.SampleID + "." + sample.RunID + pair1FastqSuffix,
-			Pair2:         sample.SampleID + "." + sample.RunID + pair2FastqSuffix,
+			Pair1:         fastqBasenamePrefix + itl.FastqPair1Suffix,
+			Pair2:         fastqBasenamePrefix + itl.FastqPair2Suffix,
 			CellDensity:   sample.OD,
 			Generations:   sample.Generations(),
 			SelectionTime: sample.Time,

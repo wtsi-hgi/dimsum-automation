@@ -137,7 +137,7 @@ func TestITL(t *testing.T) {
 				err = fcs[i].CopyFastqFiles(finalDir)
 				So(err, ShouldBeNil)
 
-				for _, suffix := range []string{"_1.fastq.gz", "_2.fastq.gz", ".fastq.gz"} {
+				for _, suffix := range []string{FastqPair1Suffix, FastqPair2Suffix} {
 					expectedBasename := sampleRun[:7] + "_id" + suffix
 
 					So(fileContents(

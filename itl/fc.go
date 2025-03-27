@@ -34,6 +34,9 @@ import (
 )
 
 const (
+	FastqPair1Suffix = "_1.fastq.gz"
+	FastqPair2Suffix = "_2.fastq.gz"
+
 	fastqOutputPathSuffix = ".output"
 	fastqOutputSubDir     = "fastq"
 )
@@ -64,12 +67,13 @@ func (fc *FastqCreator) outputPathPrefix() string {
 	return filepath.Join(fc.outputDir, fc.sampleRun.Key())
 }
 
-// CopyFastqFiles copies the fastq files created by irods_to_lustre to the given
-// directory, renaming them to be based on sampleRun instead of just sampleID.
+// CopyFastqFiles copies the pair 1 and 2 fastq files created by irods_to_lustre
+// to the given directory, renaming them to be based on sampleRun instead of
+// just sampleID.
 func (fc *FastqCreator) CopyFastqFiles(finalDir string) error {
 	sourceDir := filepath.Join(fc.outputPathPrefix()+fastqOutputPathSuffix, fastqOutputSubDir)
 
-	for _, suffix := range []string{"_1.fastq.gz", "_2.fastq.gz", ".fastq.gz"} {
+	for _, suffix := range []string{FastqPair1Suffix, FastqPair2Suffix} {
 		sourceFile := filepath.Join(sourceDir, fc.sampleRun.sampleID+suffix)
 		destFile := filepath.Join(finalDir, fc.sampleRun.Key()+suffix)
 
@@ -79,6 +83,13 @@ func (fc *FastqCreator) CopyFastqFiles(finalDir string) error {
 	}
 
 	return nil
+}
+
+// FastqBasenamePrefix returns the prefix for the fastq files based on the
+// sample ID and run ID. Appending the suffixes FastqPair1Suffix and
+// FastqPair2Suffix will give the full names of the fastq files.
+func FastqBasenamePrefix(sampleID, runID string) string {
+	return sampleRun{sampleID: sampleID, runID: runID}.Key()
 }
 
 func copyFile(src, dst string) error {
