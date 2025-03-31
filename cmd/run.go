@@ -1,8 +1,7 @@
 /*******************************************************************************
  * Copyright (c) 2025 Genome Research Ltd.
  *
- * Authors:
- *	- Sendu Bala <sb10@sanger.ac.uk>
+ * Author: Sendu Bala <sb10@sanger.ac.uk>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -24,12 +23,34 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ******************************************************************************/
 
-package main
+package cmd
 
 import (
-	"github.com/wtsi-hgi/dimsum-automation/cmd"
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	cmd.Execute()
+// options for this cmd.
+
+// runCmd represents the run command.
+var runCmd = &cobra.Command{
+	Use:   "run",
+	Short: "Run commands.",
+	Long: `Run commands.
+
+...
+`,
+	Run: func(_ *cobra.Command, _ []string) {
+		err := sampleInfo()
+		if err != nil {
+			die("%s", err.Error())
+		}
+	},
+}
+
+func init() {
+	RootCmd.AddCommand(runCmd)
+
+	// flags specific to this sub-command
+	// listCmd.Flags().StringVar(&lstUser, "user", currentUsername(),
+	// 	"pretend to be this user (only works if you started the server)")
 }

@@ -1,8 +1,7 @@
 /*******************************************************************************
  * Copyright (c) 2025 Genome Research Ltd.
  *
- * Authors:
- *	- Sendu Bala <sb10@sanger.ac.uk>
+ * Author: Sendu Bala <sb10@sanger.ac.uk>
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files (the
@@ -24,12 +23,28 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ******************************************************************************/
 
-package main
+package cmd
 
 import (
-	"github.com/wtsi-hgi/dimsum-automation/cmd"
+	"fmt"
+
+	"github.com/spf13/cobra"
 )
 
-func main() {
-	cmd.Execute()
+// Version gets set during build:
+// go build -ldflags "-X github.com/wtsi-hgi/dimsum-automation/cmd.Version=`git describe --tags --always --long --dirty`" .
+var Version string
+
+// versionCmd represents the version command.
+var versionCmd = &cobra.Command{
+	Use:   "version",
+	Short: "Print dimsum-automation version",
+	Long:  `Print dimsum-automation version.`,
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(Version)
+	},
+}
+
+func init() {
+	RootCmd.AddCommand(versionCmd)
 }
