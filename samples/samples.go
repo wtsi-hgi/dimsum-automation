@@ -255,6 +255,7 @@ func newSample(s mlwh.Sample, meta sheets.MetaData) Sample {
 			RunID:      s.RunID,
 			StudyID:    s.StudyID,
 			StudyName:  s.StudyName,
+			ManualQC:   s.ManualQC,
 		},
 		MetaData: sheets.MetaData{
 			Selection: meta.Selection,

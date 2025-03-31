@@ -95,6 +95,7 @@ func TestSamplesMock(t *testing.T) {
 				RunID:      "run1",
 				StudyID:    "studyID1",
 				StudyName:  "study1",
+				ManualQC:   true,
 			},
 			{
 				SampleID:   "sampleID2",
@@ -250,6 +251,7 @@ func TestSamplesReal(t *testing.T) {
 			So(samples[0].RunID, ShouldNotBeEmpty)
 			So(samples[0].StudyID, ShouldNotBeEmpty)
 			So(samples[0].StudyName, ShouldNotBeEmpty)
+			So(samples[0].ManualQC, ShouldBeTrue)
 			So(samples[0].Replicate, ShouldBeGreaterThan, 0)
 			So(samples[0].OD, ShouldBeGreaterThan, 0)
 			So(samples[0].LibraryID, ShouldNotBeEmpty)

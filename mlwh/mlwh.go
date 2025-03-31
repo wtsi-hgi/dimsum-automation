@@ -67,21 +67,21 @@ type Sample struct {
 	RunID      string
 	SampleID   string
 	SampleName string
+	ManualQC   bool
 }
 
 const getSamples = `
 SELECT DISTINCT st.id_study_lims as StudyID, st.name as StudyName,
 r.id_run as RunID, sa.sanger_sample_id as SangerSampleID,
-sa.supplier_name as SupplierName
+sa.supplier_name as SupplierName, fc.manual_qc as ManualQC
 FROM iseq_flowcell fc
 JOIN study st on st.id_study_tmp = fc.id_study_tmp
 JOIN iseq_run r on r.id_flowcell_lims = fc.id_flowcell_lims
 JOIN sample sa on sa.id_sample_tmp = fc.id_sample_tmp
-WHERE st.faculty_sponsor = ? and fc.manual_qc = '1'
+WHERE st.faculty_sponsor = ? and (fc.manual_qc = '1' or fc.manual_qc = '0')
 `
 
-// SamplesForSponsor returns all samples in the MLWH for the given sponsor where
-// manual_qc is 1.
+// SamplesForSponsor returns all samples in the MLWH for the given sponsor.
 func (m *MLWH) SamplesForSponsor(sponsor string) ([]Sample, error) {
 	rows, err := m.pool.Query(getSamples, sponsor)
 	if err != nil {
@@ -101,6 +101,7 @@ func (m *MLWH) SamplesForSponsor(sponsor string) ([]Sample, error) {
 			&sample.RunID,
 			&sample.SampleID,
 			&sample.SampleName,
+			&sample.ManualQC,
 		); err != nil {
 			return nil, err
 		}

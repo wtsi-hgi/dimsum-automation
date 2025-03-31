@@ -58,6 +58,20 @@ func TestMLWH(t *testing.T) {
 			So(samples[0].StudyID, ShouldNotBeEmpty)
 			So(samples[0].StudyName, ShouldNotBeEmpty)
 
+			passed := 0
+			failed := 0
+
+			for _, sample := range samples {
+				if sample.ManualQC {
+					passed++
+				} else {
+					failed++
+				}
+			}
+
+			So(passed, ShouldBeGreaterThan, 0)
+			So(failed, ShouldBeGreaterThan, 0)
+
 			samples, err = mlwh.SamplesForSponsor("invalid sponsor")
 			So(err, ShouldBeNil)
 			So(len(samples), ShouldEqual, 0)
