@@ -34,6 +34,16 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
+type Error string
+
+func (e Error) Error() string { return string(e) }
+
+const (
+	ErrInvalidNameRun   = Error("both name and run must be set")
+	ErrNoNameRun        = Error("no name and run provided")
+	ErrNameRunsNotFound = Error("no samples found for given names and runs")
+)
+
 type MLWHClient interface {
 	// SamplesForSponsor returns all samples for the given sponsor, including
 	// study and run information.
@@ -194,6 +204,55 @@ type Sample struct {
 	sheets.MetaData
 }
 
+// NameRun lets you specify a sample name and run id, for filtering Samples.
+type NameRun struct {
+	Name string
+	Run  string
+}
+
+// Samples is a slice of Sample, from which you can get a subset based on
+// NameRuns.
+type Samples []Sample
+
+// Filter returns a subset of the samples that match the given names and runs.
+// Returns an error if not all NameRuns are found in the samples, or no valid
+// NameRuns are provided.
+func (s Samples) Filter(nameRuns []NameRun) (Samples, error) {
+	nrMap := make(map[string]bool, len(nameRuns))
+
+	for _, nr := range nameRuns {
+		if nr.Name == "" || nr.Run == "" {
+			return nil, ErrInvalidNameRun
+		}
+
+		nrMap[nr.Name+"."+nr.Run] = true
+	}
+
+	if len(nrMap) == 0 {
+		return nil, ErrNoNameRun
+	}
+
+	if len(nrMap) > len(s) {
+		return nil, ErrNameRunsNotFound
+	}
+
+	result := make(Samples, 0, len(nrMap))
+
+	for _, sample := range s {
+		key := sample.SampleName + "." + sample.RunID
+		if nrMap[key] {
+			result = append(result, sample)
+			delete(nrMap, key)
+		}
+	}
+
+	if len(nrMap) != 0 {
+		return nil, ErrNameRunsNotFound
+	}
+
+	return result, nil
+}
+
 // ForSponsor returns all samples for the given sponsor where manual_qc is 1 and
 // where there is corresponding metadata in our google sheet. It caches database
 // queries, so results can be up to CacheLifetime old.
@@ -201,7 +260,7 @@ type Sample struct {
 // If you have prefetching enabled, this always returns immediately with the
 // result of the last successful prefetch, which might have been longer than
 // CacheLifetime ago, if the last actual prefetch failed (see Err()).
-func (c *Client) ForSponsor(sponsor string) ([]Sample, error) {
+func (c *Client) ForSponsor(sponsor string) (Samples, error) {
 	cached, result := c.cache.getData(sponsor)
 
 	c.stopMu.RLock()

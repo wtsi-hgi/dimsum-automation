@@ -37,10 +37,6 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
-type Error string
-
-func (e Error) Error() string { return string(e) }
-
 const (
 	sponsor = "Ben Lehner"
 	errMock = Error("mock error")
@@ -149,7 +145,7 @@ func TestSamplesMock(t *testing.T) {
 			samples, err := c.ForSponsor(sponsor)
 			So(err, ShouldBeNil)
 			So(len(samples), ShouldEqual, 3)
-			So(samples, ShouldResemble, []Sample{
+			So(samples, ShouldResemble, Samples{
 				{
 					Sample:   msamples[0],
 					MetaData: smeta[msamples[0].SampleName],
@@ -188,7 +184,7 @@ func TestSamplesMock(t *testing.T) {
 					freshSamples, err := c.ForSponsor(sponsor)
 					So(err, ShouldBeNil)
 					So(len(freshSamples), ShouldEqual, 1)
-					So(freshSamples, ShouldResemble, []Sample{
+					So(freshSamples, ShouldResemble, Samples{
 						{
 							Sample:   msamples[0],
 							MetaData: smeta[msamples[0].SampleName],
@@ -213,6 +209,39 @@ func TestSamplesMock(t *testing.T) {
 					So(c.Err(), ShouldEqual, errMock)
 					So(c.LastPrefetchSuccess(), ShouldHappenBefore, createTime)
 				})
+			})
+
+			Convey("You can filter those for desired samples", func() {
+				subset, err := samples.Filter([]NameRun{
+					{Name: msamples[0].SampleName, Run: msamples[0].RunID},
+					{Name: msamples[2].SampleName, Run: msamples[2].RunID},
+				})
+				So(err, ShouldBeNil)
+				So(len(subset), ShouldEqual, 2)
+				So(subset[0].SampleName, ShouldEqual, msamples[0].SampleName)
+				So(subset[0].RunID, ShouldEqual, msamples[0].RunID)
+				So(subset[1].SampleName, ShouldEqual, msamples[2].SampleName)
+				So(subset[1].RunID, ShouldEqual, msamples[2].RunID)
+
+				_, err = samples.Filter(nil)
+				So(err, ShouldEqual, ErrNoNameRun)
+
+				_, err = samples.Filter([]NameRun{{Name: "", Run: ""}})
+				So(err, ShouldEqual, ErrInvalidNameRun)
+
+				_, err = samples.Filter([]NameRun{
+					{Name: "1", Run: "1"},
+					{Name: "2", Run: "1"},
+					{Name: "3", Run: "1"},
+					{Name: "4", Run: "1"},
+				})
+				So(err, ShouldEqual, ErrNameRunsNotFound)
+
+				_, err = samples.Filter([]NameRun{
+					{Name: msamples[0].SampleName, Run: msamples[0].RunID},
+					{Name: "foo", Run: "bar"},
+				})
+				So(err, ShouldEqual, ErrNameRunsNotFound)
 			})
 		})
 	})
@@ -261,12 +290,29 @@ func TestSamplesReal(t *testing.T) {
 			So(samples[0].Cutadapt5Second, ShouldNotBeEmpty)
 			So(time.Since(start), ShouldBeGreaterThan, 100*time.Millisecond)
 
-			Convey("Which is then cached", func() {
+			Convey("Which is then cached and filterable", func() {
 				start = time.Now()
 				cachedSamples, err := c.ForSponsor(sponsor)
 				So(err, ShouldBeNil)
 				So(cachedSamples, ShouldResemble, samples)
 				So(time.Since(start), ShouldBeLessThan, 100*time.Millisecond)
+
+				first := samples[0]
+				last := samples[len(samples)-1]
+
+				subset, err := cachedSamples.Filter([]NameRun{
+					{Name: first.SampleName, Run: first.RunID},
+					{Name: last.SampleName, Run: last.RunID},
+				})
+				So(err, ShouldBeNil)
+				So(len(subset), ShouldEqual, len(samples))
+				So(subset[0].SampleName, ShouldEqual, first.SampleName)
+				So(subset[0].RunID, ShouldEqual, first.RunID)
+
+				if len(subset) > 1 {
+					So(subset[1].SampleName, ShouldEqual, last.SampleName)
+					So(subset[1].RunID, ShouldEqual, last.RunID)
+				}
 			})
 		})
 	})
