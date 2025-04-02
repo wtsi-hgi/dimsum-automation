@@ -322,11 +322,12 @@ func newSample(s mlwh.Sample, meta sheets.MetaData) Sample {
 			Time:      meta.Time,
 			OD:        meta.OD,
 			LibraryMetaData: sheets.LibraryMetaData{
-				LibraryID:       meta.LibraryID,
-				ExperimentID:    meta.ExperimentID,
-				Wt:              meta.Wt,
-				Cutadapt5First:  meta.Cutadapt5First,
-				Cutadapt5Second: meta.Cutadapt5Second,
+				LibraryID:        meta.LibraryID,
+				ExperimentID:     meta.ExperimentID,
+				Wt:               meta.Wt,
+				Cutadapt5First:   meta.Cutadapt5First,
+				Cutadapt5Second:  meta.Cutadapt5Second,
+				MaxSubstitutions: meta.MaxSubstitutions,
 			},
 		},
 	}

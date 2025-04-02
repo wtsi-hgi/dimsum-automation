@@ -288,6 +288,7 @@ func TestSamplesReal(t *testing.T) {
 			So(samples[0].Wt, ShouldNotBeEmpty)
 			So(samples[0].Cutadapt5First, ShouldNotBeEmpty)
 			So(samples[0].Cutadapt5Second, ShouldNotBeEmpty)
+			So(samples[0].MaxSubstitutions, ShouldBeGreaterThan, 0)
 			So(time.Since(start), ShouldBeGreaterThan, 100*time.Millisecond)
 
 			Convey("Which is then cached and filterable", func() {

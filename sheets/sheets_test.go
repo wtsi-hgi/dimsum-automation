@@ -57,10 +57,9 @@ func TestSheets(t *testing.T) {
 			sheetL, err := sheets.Read(c.SheetID, "Libraries")
 			So(err, ShouldBeNil)
 			So(sheetL, ShouldNotBeNil)
-			So(sheetL.ColumnHeaders, ShouldResemble, []string{
+			So(sheetL.ColumnHeaders[0:9], ShouldResemble, []string{
 				"library_id", "experiment_id", "dimsum_wt", "dimsum_cutadapt5First", "dimsum_cutadapt5Second",
-				"dimsum_maxSubstitutions", "barcoded", "Assay", "uniprot_id", "organism",
-				"uniprot_WT", "binder_uniprot_id", "...",
+				"dimsum_maxSubstitutions", "Assay", "uniprot_WT", "binder_uniprot_id",
 			})
 
 			So(len(sheetL.Rows), ShouldBeGreaterThan, 0)
@@ -69,8 +68,8 @@ func TestSheets(t *testing.T) {
 			sheetS, err := sheets.Read(c.SheetID, "Samples")
 			So(err, ShouldBeNil)
 			So(sheetS, ShouldNotBeNil)
-			So(sheetS.ColumnHeaders, ShouldResemble, []string{
-				"library_id", "sample_id", "selection", "replicate", "time", "OD",
+			So(sheetS.ColumnHeaders[0:6], ShouldResemble, []string{
+				"experiment_id", "sample_id", "selection", "replicate", "time", "OD",
 			})
 
 			So(len(sheetS.Rows), ShouldBeGreaterThan, 0)
@@ -104,11 +103,12 @@ func TestSheets(t *testing.T) {
 				Time:      34.5,
 				OD:        1.27,
 				LibraryMetaData: LibraryMetaData{
-					LibraryID:       "762",
-					ExperimentID:    "762_abundance",
-					Wt:              "AAGGTCATGGAAATAAAGCTGATCAAGGGCCCAAAAGGACTTGGGTTCTCTATCGCAGGCGGAGTTGGCAACCAGCATATCCCCGGGGATAACTCAATCTACGTAACCAAAATTATCGAAGGCGGGGCAGCTCATAAGGATGGTCGACTT",
-					Cutadapt5First:  "GGGAGGTGGAGCTAGC",
-					Cutadapt5Second: "GCCAAGATTTTATCTCCAATTTG",
+					LibraryID:        "762",
+					ExperimentID:     "762_abundance",
+					Wt:               "AAGGTCATGGAAATAAAGCTGATCAAGGGCCCAAAAGGACTTGGGTTCTCTATCGCAGGCGGAGTTGGCAACCAGCATATCCCCGGGGATAACTCAATCTACGTAACCAAAATTATCGAAGGCGGGGCAGCTCATAAGGATGGTCGACTT",
+					Cutadapt5First:   "GGGAGGTGGAGCTAGC",
+					Cutadapt5Second:  "GCCAAGATTTTATCTCCAATTTG",
+					MaxSubstitutions: 2,
 				},
 			})
 		})

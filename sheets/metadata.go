@@ -40,11 +40,12 @@ const (
 
 // LibraryMetaData holds library metadata needed by DimSum.
 type LibraryMetaData struct {
-	LibraryID       string
-	ExperimentID    string
-	Wt              string
-	Cutadapt5First  string
-	Cutadapt5Second string
+	LibraryID        string
+	ExperimentID     string
+	Wt               string
+	Cutadapt5First   string
+	Cutadapt5Second  string
+	MaxSubstitutions int
 }
 
 // MetaData holds information needed by DimSum for a sample.
@@ -90,7 +91,7 @@ func (s *Sheets) DimSumMetaData(sheetID string) (map[string]MetaData, error) {
 		"replicate",
 		"time",
 		"OD",
-		"library_id",
+		"experiment_id",
 	)
 	if err != nil {
 		return nil, err
@@ -137,6 +138,7 @@ func (s *Sheets) getLibraryMetaData(sheetID string) (map[string]LibraryMetaData,
 		"dimsum_wt",
 		"dimsum_cutadapt5First",
 		"dimsum_cutadapt5Second",
+		"dimsum_maxSubstitutions",
 	)
 	if err != nil {
 		return nil, err
@@ -145,12 +147,18 @@ func (s *Sheets) getLibraryMetaData(sheetID string) (map[string]LibraryMetaData,
 	m := make(map[string]LibraryMetaData, len(libRows))
 
 	for _, row := range libRows {
+		ms, err := strconv.Atoi(row[5])
+		if err != nil {
+			return nil, err
+		}
+
 		m[row[1]] = LibraryMetaData{
-			LibraryID:       row[0],
-			ExperimentID:    row[1],
-			Wt:              row[2],
-			Cutadapt5First:  row[3],
-			Cutadapt5Second: row[4],
+			LibraryID:        row[0],
+			ExperimentID:     row[1],
+			Wt:               row[2],
+			Cutadapt5First:   row[3],
+			Cutadapt5Second:  row[4],
+			MaxSubstitutions: ms,
 		}
 	}
 
