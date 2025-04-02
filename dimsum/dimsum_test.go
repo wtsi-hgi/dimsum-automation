@@ -46,11 +46,12 @@ func TestDimsum(t *testing.T) {
 		run := "run"
 
 		libMeta := sheets.LibraryMetaData{
-			LibraryID:       "lib1",
-			ExperimentID:    exp,
-			Wt:              "wt",
-			Cutadapt5First:  "ACTG",
-			Cutadapt5Second: "TCGA",
+			LibraryID:        "lib1",
+			ExperimentID:     exp,
+			Wt:               "wt",
+			Cutadapt5First:   "ACTG",
+			Cutadapt5Second:  "TCGA",
+			MaxSubstitutions: 3,
 		}
 
 		testSamples := []samples.Sample{
@@ -146,7 +147,7 @@ func TestDimsum(t *testing.T) {
 				barcodeIdentityPath := "barcode_identity.txt"
 
 				dimsum := New(exe, fastqDir, barcodeIdentityPath, exp, vsearchMinQual, startStage,
-					fitnessMinInputCountAny, fitnessMinInputCountAll)
+					fitnessMinInputCountAny, fitnessMinInputCountAll, libMeta)
 				So(dimsum, ShouldNotBeNil)
 
 				cmd := dimsum.Command(dir, libMeta)
@@ -163,12 +164,12 @@ func TestDimsum(t *testing.T) {
 					DefaultCutAdaptMinLength, DefaultCutAdaptErrorRate,
 					vsearchMinQual, filepath.Join(dir, outputSubdir), dimsumProjectPrefix+exp,
 					startStage, libMeta.Wt, DefaultCores, fitnessMinInputCountAny,
-					fitnessMinInputCountAll, DefaultMaxSubstitutions,
+					fitnessMinInputCountAll, 3,
 					DefaultMutagenesisType, "T", "F", "F", barcodeIdentityPath,
 				))
 
 				dimsum = New(exe, fastqDir, "", exp, vsearchMinQual, startStage,
-					fitnessMinInputCountAny, fitnessMinInputCountAll)
+					fitnessMinInputCountAny, fitnessMinInputCountAll, libMeta)
 				So(dimsum, ShouldNotBeNil)
 
 				cmd = dimsum.Command(dir, libMeta)

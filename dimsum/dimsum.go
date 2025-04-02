@@ -200,8 +200,17 @@ type DimSum struct {
 //   - startStage: Stage to start the analysis from.
 //   - fitnessMinInputCountAny: Minimum input count for any fitness calculation.
 //   - fitnessMinInputCountAll: Minimum input count for all fitness calculations.
+//   - libMeta: Metadata for the library used in the experiment, from which
+//     MaxSubstitutions will be taken (a default value of 2 will be used
+//     if not defined in the metadata).
 func New(exe, fastqDir, barcodeIdentityPath, experiment string,
-	vsearchMinQual, startStage, fitnessMinInputCountAny, fitnessMinInputCountAll int) DimSum {
+	vsearchMinQual, startStage, fitnessMinInputCountAny, fitnessMinInputCountAll int,
+	libMeta sheets.LibraryMetaData) DimSum {
+	maxSubs := libMeta.MaxSubstitutions
+	if maxSubs == 0 {
+		maxSubs = DefaultMaxSubstitutions
+	}
+
 	return DimSum{
 		Exe:                     exe,
 		FastqDir:                fastqDir,
@@ -217,7 +226,7 @@ func New(exe, fastqDir, barcodeIdentityPath, experiment string,
 		CutAdaptMinLength:       DefaultCutAdaptMinLength,
 		CutAdaptErrorRate:       DefaultCutAdaptErrorRate,
 		Cores:                   DefaultCores,
-		MaxSubstitutions:        DefaultMaxSubstitutions,
+		MaxSubstitutions:        maxSubs,
 		MixedSubstitutions:      DefaultMixedSubstitutions,
 		MutagenesisType:         DefaultMutagenesisType,
 		RetainIntermediateFiles: DefaultRetainIntermediateFiles,
