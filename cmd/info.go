@@ -149,19 +149,19 @@ func sampleInfo() error {
 	if false { //nolint:nestif
 		for key, count := range allSame {
 			if count > 1 {
-				cliPrint("Sample %s appears %d times\n", key, count) // 2 of these
+				cliPrintf("Sample %s appears %d times\n", key, count) // 2 of these
 			}
 		}
 
 		for key, runMap := range diffRun {
 			if len(runMap) > 1 {
-				cliPrint("Sample %s has %d different run IDs\n", key, len(runMap)) // many of these
+				cliPrintf("Sample %s has %d different run IDs\n", key, len(runMap)) // many of these
 			}
 		}
 
 		for key, studyMap := range diffStudy {
 			if len(studyMap) > 1 {
-				cliPrint("Sample %s has %d different study IDs\n", key, len(studyMap)) // none of these
+				cliPrintf("Sample %s has %d different study IDs\n", key, len(studyMap)) // none of these
 			}
 		}
 	}

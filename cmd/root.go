@@ -70,24 +70,13 @@ func init() {
 }
 
 // cliPrint outputs the message to STDOUT.
-func cliPrint(msg string, a ...interface{}) {
-	fmt.Fprintf(os.Stdout, msg, a...)
-}
-
-// cliPrintRaw is like cliPrint, but does no interpretation of placeholders in
-// msg.
-func cliPrintRaw(msg string) {
+func cliPrint(msg string) {
 	fmt.Fprint(os.Stdout, msg)
 }
 
-// info is a convenience to log a message at the Info level.
-func info(msg string, a ...interface{}) {
-	appLogger.Info(fmt.Sprintf(msg, a...))
-}
-
-// warn is a convenience to log a message at the Warn level.
-func warn(msg string, a ...interface{}) {
-	appLogger.Warn(fmt.Sprintf(msg, a...))
+// cliPrintf outputs the message to STDOUT, with printf formatting args.
+func cliPrintf(msg string, a ...interface{}) {
+	fmt.Fprintf(os.Stdout, msg, a...)
 }
 
 // die is a convenience to log a message at the Error level and exit non zero.
