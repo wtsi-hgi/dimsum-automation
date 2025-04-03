@@ -50,6 +50,11 @@ type FastqCreator struct {
 	finalDir  string
 }
 
+// IDRun returns the "sampleID.runID" for this sample.
+func (fc *FastqCreator) IDRun() string {
+	return fc.sampleRun.Key()
+}
+
 // Command returns a command line for irods_to_lustre that will use our TSV file
 // to download crams and convert them to FASTQs.
 func (fc *FastqCreator) Command() string {
@@ -68,13 +73,13 @@ func (fc *FastqCreator) outputPathPrefix() string {
 	return filepath.Join(".", fc.sampleRun.Key())
 }
 
-// CopyFastqFiles moves the pair 1 and 2 fastq files created by irods_to_lustre
+// MoveFastqFiles moves the pair 1 and 2 fastq files created by irods_to_lustre
 // to our final fastq directory, renaming them to be based on sampleRun instead
 // of just sampleID.
 //
 // If the destination files already exist and have the same size, nothing is
 // done. If they have different sizes, an error is returned.
-func (fc *FastqCreator) CopyFastqFiles() error {
+func (fc *FastqCreator) MoveFastqFiles() error {
 	sourceDir := filepath.Join(fc.outputPathPrefix()+fastqOutputPathSuffix, fastqOutputSubDir)
 
 	for _, suffix := range []string{FastqPair1Suffix, FastqPair2Suffix} {

@@ -28,6 +28,7 @@ package itl
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/wtsi-hgi/dimsum-automation/samples"
@@ -38,8 +39,9 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
-	ErrNoStudies       = Error("no samples with studies provided")
-	ErrMultipleStudies = Error("samples from multiple studies")
+	ErrNoStudies        = Error("no samples with studies provided")
+	ErrMultipleStudies  = Error("samples from multiple studies")
+	ErrMissingFastqFile = Error("one fastq file for sample run already exists, but not the other")
 
 	tsvOutputDir   = "./tsv_output"
 	tsvOutputPath  = tsvOutputDir + "/metadata/samples.tsv"
@@ -107,9 +109,14 @@ func New(inputSamples []samples.Sample, fastqDir string) (*ITL, error) {
 		return nil, err
 	}
 
+	todo, err := todoSampleRuns(sampleRuns, fastqDir)
+	if err != nil {
+		return nil, err
+	}
+
 	return &ITL{
 		studyID:    studyID,
-		sampleRuns: sampleRuns,
+		sampleRuns: todo,
 		fastqDir:   fastqDir,
 	}, nil
 }
@@ -144,6 +151,53 @@ func extractSampleRuns(inputSamples []samples.Sample, studyID string) ([]sampleR
 	}
 
 	return sampleRuns, nil
+}
+
+// todoSampleRuns checks if the fastq files for each sample run already exist
+// in the fastq directory. It returns a slice of sample runs that need to be
+// processed, or an error if any of the sample runs have only one fastq file
+// already present.
+func todoSampleRuns(sampleRuns []sampleRun, fastqDir string) ([]sampleRun, error) {
+	todo := make([]sampleRun, 0, len(sampleRuns))
+
+	for _, sr := range sampleRuns {
+		found, err := checkFastqFiles(sr, fastqDir)
+		if err != nil {
+			return nil, err
+		}
+
+		if found {
+			continue
+		}
+
+		todo = append(todo, sr)
+	}
+
+	return todo, nil
+}
+
+// checkFastqFiles checks if the fastq files for a sample run already exist in
+// the fastq directory. If they both do, returns true, or if none do, returns
+// false. If only one fastq file exists, it returns an error.
+func checkFastqFiles(sr sampleRun, fastqDir string) (bool, error) {
+	pair1 := sr.FastqPath(fastqDir, FastqPair1Suffix)
+	pair2 := sr.FastqPath(fastqDir, FastqPair2Suffix)
+
+	if fileExists(pair1) && fileExists(pair2) {
+		return true, nil
+	}
+
+	if fileExists(pair1) || fileExists(pair2) {
+		return true, ErrMissingFastqFile
+	}
+
+	return false, nil
+}
+
+func fileExists(path string) bool {
+	_, err := os.Stat(path)
+
+	return !os.IsNotExist(err)
 }
 
 // SampleNameRuns returns a slice of strings of the form "sampleName.runID" for

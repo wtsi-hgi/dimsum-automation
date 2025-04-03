@@ -95,3 +95,14 @@ func dief(msg string, a ...interface{}) {
 	appLogger.Error(fmt.Sprintf(msg, a...))
 	os.Exit(1)
 }
+
+// info is a convenience to log a message at the Info level.
+func info(msg string) {
+	appLogger.Info(msg)
+}
+
+// infof is a convenience to log an info message, with printf formatting args,
+// at the Info level.
+func infof(msg string, a ...interface{}) {
+	appLogger.Info(fmt.Sprintf(msg, a...))
+}

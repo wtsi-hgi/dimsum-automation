@@ -92,26 +92,28 @@ func TestDimsum(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(design, ShouldResemble, ExperimentDesign{
 				{
-					ID:            exp,
-					SampleName:    sample1,
-					Replicate:     1,
-					Selection:     0,
-					Pair1:         sample1 + "_id." + run + pair1FastqSuffix,
-					Pair2:         sample1 + "_id." + run + pair2FastqSuffix,
-					CellDensity:   0.1,
-					Generations:   float32(1),
-					SelectionTime: 0.5,
+					ID:              exp,
+					SampleName:      sample1,
+					Replicate:       1,
+					Selection:       0,
+					Pair1:           sample1 + "_id." + run + pair1FastqSuffix,
+					Pair2:           sample1 + "_id." + run + pair2FastqSuffix,
+					CellDensity:     0.1,
+					Generations:     float32(1),
+					SelectionTime:   0.5,
+					LibraryMetaData: libMeta,
 				},
 				{
-					ID:            exp,
-					SampleName:    sample2,
-					Replicate:     2,
-					Selection:     1,
-					Pair1:         sample2 + "_id." + run + pair1FastqSuffix,
-					Pair2:         sample2 + "_id." + run + pair2FastqSuffix,
-					CellDensity:   0.2,
-					Generations:   float32(2),
-					SelectionTime: 0.6,
+					ID:              exp,
+					SampleName:      sample2,
+					Replicate:       2,
+					Selection:       1,
+					Pair1:           sample2 + "_id." + run + pair1FastqSuffix,
+					Pair2:           sample2 + "_id." + run + pair2FastqSuffix,
+					CellDensity:     0.2,
+					Generations:     float32(2),
+					SelectionTime:   0.6,
+					LibraryMetaData: libMeta,
 				},
 			})
 			So(design.ID(), ShouldEqual, exp)
@@ -145,6 +147,8 @@ func TestDimsum(t *testing.T) {
 				fitnessMinInputCountAny := 10
 				fitnessMinInputCountAll := 0
 				barcodeIdentityPath := "barcode_identity.txt"
+
+				So(design.LibraryMetaData(), ShouldResemble, libMeta)
 
 				dimsum := New(exe, fastqDir, barcodeIdentityPath, exp, vsearchMinQual, startStage,
 					fitnessMinInputCountAny, fitnessMinInputCountAll, libMeta)

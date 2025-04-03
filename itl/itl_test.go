@@ -38,6 +38,11 @@ import (
 )
 
 func TestITL(t *testing.T) {
+	testSamplesTSVPath, err := filepath.Abs(filepath.Join("testdata", "samples.tsv"))
+	if err != nil {
+		t.Fatalf("Failed to get absolute path of testdata file: %v", err)
+	}
+
 	Convey("Given desired samples", t, func() {
 		studyID := "study1"
 		runID1 := "run1"
@@ -73,9 +78,6 @@ func TestITL(t *testing.T) {
 		}
 
 		Convey("You can generate irods_to_lustre command lines, filter the initial tsv, and move the fastqs", func() {
-			testSamplesTSVPath, err := filepath.Abs(filepath.Join("testdata", "samples.tsv"))
-			So(err, ShouldBeNil)
-
 			dir := t.TempDir()
 			t.Chdir(dir)
 
@@ -112,7 +114,7 @@ func TestITL(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(fcs, ShouldHaveLength, len(testSamples))
 
-			for i, sampleRun := range []string{
+			for i, sr := range []string{
 				sampleName1 + "_id." + runID1,
 				sampleName1 + "_id." + runID2,
 				sampleName2 + "_id." + runID1,
@@ -124,15 +126,17 @@ func TestITL(t *testing.T) {
 							"--samples_to_process -1 --run_imeta_study false --run_iget_study_cram true "+
 							"--run_merge_crams true --run_crams_to_fastq true --filter_manual_qc true "+
 							"--outdir %[1]s.output -w %[1]s.work",
-						sampleRun,
+						sr,
 					),
 				)
 
-				So(fileContents(filepath.Join(".", sampleRun+".tsv")),
-					ShouldEqual,
-					fileContents(testSamplesTSVPath+"."+sampleRun))
+				So(fcs[i].IDRun(), ShouldEqual, sr)
 
-				err = createTestFastqFiles(sampleRun)
+				So(fileContents(filepath.Join(".", sr+".tsv")),
+					ShouldEqual,
+					fileContents(testSamplesTSVPath+"."+sr))
+
+				err = createTestFastqFiles(sr)
 				So(err, ShouldBeNil)
 
 				suffixes := []string{FastqPair1Suffix, FastqPair2Suffix}
@@ -141,17 +145,17 @@ func TestITL(t *testing.T) {
 				sourcePaths := make([]string, len(suffixes))
 
 				for i, suffix := range suffixes {
-					expectedBasename := sampleRun[:7] + "_id" + suffix
-					path := filepath.Join(sampleRun+".output", fastqOutputSubDir, expectedBasename)
+					expectedBasename := sr[:7] + "_id" + suffix
+					path := filepath.Join(sr+".output", fastqOutputSubDir, expectedBasename)
 					expectedContents[i] = fileContents(path)
 					sourcePaths[i] = path
 				}
 
-				err = fcs[i].CopyFastqFiles()
+				err = fcs[i].MoveFastqFiles()
 				So(err, ShouldBeNil)
 
 				for i, suffix := range suffixes {
-					So(fileContents(filepath.Join(finalDir, sampleRun+suffix)),
+					So(fileContents(filepath.Join(finalDir, sr+suffix)),
 						ShouldEqual,
 						expectedContents[i])
 
@@ -160,6 +164,42 @@ func TestITL(t *testing.T) {
 					So(os.IsNotExist(err), ShouldBeTrue)
 				}
 			}
+		})
+
+		Convey("itl ignores samples where the fastqs already exist", func() {
+			dir := t.TempDir()
+			t.Chdir(dir)
+
+			finalDir := t.TempDir()
+
+			doneSR := sampleName1 + "_id." + runID2
+			fastq1 := filepath.Join(finalDir, doneSR+FastqPair1Suffix)
+			err := os.WriteFile(fastq1, []byte("done"), userPerm)
+			So(err, ShouldBeNil)
+
+			_, err = New(testSamples, finalDir)
+			So(err, ShouldNotBeNil)
+
+			fastq2 := filepath.Join(finalDir, doneSR+FastqPair2Suffix)
+			err = os.WriteFile(fastq2, []byte("done"), userPerm)
+			So(err, ShouldBeNil)
+
+			itl, err := New(testSamples, finalDir)
+			So(err, ShouldBeNil)
+			So(itl, ShouldNotBeNil)
+			So(itl.studyID, ShouldEqual, studyID)
+			So(itl.sampleRuns, ShouldResemble, []sampleRun{
+				{sampleID: "sample1_id", runID: "run1"},
+				{sampleID: "sample2_id", runID: "run1"},
+			})
+			So(itl.SampleNameRuns(), ShouldResemble, []string{
+				"sample1_id.run1",
+				"sample2_id.run1",
+			})
+
+			fcs, err := itl.FilterSamplesTSV(testSamplesTSVPath)
+			So(err, ShouldBeNil)
+			So(fcs, ShouldHaveLength, len(testSamples)-1)
 		})
 
 		Convey("You can't make a new ITL with samples from multiple studies, or no studies", func() {

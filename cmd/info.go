@@ -74,12 +74,7 @@ func sampleInfo() error {
 		return err
 	}
 
-	db, sheets, err := getDBAndSheets(c)
-	if err != nil {
-		return err
-	}
-
-	metadata, err := sheets.DimSumMetaData(c.SheetID)
+	db, sheets, metadata, err := getDBAndSheets(c)
 	if err != nil {
 		return err
 	}
@@ -226,23 +221,28 @@ func sampleInfo() error {
 	return nil
 }
 
-func getDBAndSheets(c *config.Config) (*mlwh.MLWH, *sheets.Sheets, error) {
+func getDBAndSheets(c *config.Config) (*mlwh.MLWH, *sheets.Sheets, map[string]sheets.MetaData, error) {
 	db, err := mlwh.New(mlwh.MySQLConfigFromConfig(c))
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	sc, err := sheets.ServiceCredentialsFromConfig(c)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, nil, err
 	}
 
 	s, err := sheets.New(sc)
+	if err != nil {
+		return nil, nil, nil, err
+	}
 
-	return db, s, err
+	metadata, err := s.DimSumMetaData(c.SheetID)
+
+	return db, s, metadata, err
 }
 
-func sponsorSamples(c *config.Config, db *mlwh.MLWH, s *sheets.Sheets) ([]samples.Sample, error) {
+func sponsorSamples(c *config.Config, db *mlwh.MLWH, s *sheets.Sheets) (samples.Samples, error) {
 	client := samples.New(db, s, samples.ClientOptions{
 		SheetID:       c.SheetID,
 		CacheLifetime: cacheLifetime,

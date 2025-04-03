@@ -33,6 +33,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/wtsi-hgi/dimsum-automation/config"
+	"github.com/wtsi-hgi/dimsum-automation/dimsum"
 	"github.com/wtsi-hgi/dimsum-automation/itl"
 	"github.com/wtsi-hgi/dimsum-automation/samples"
 )
@@ -41,11 +42,17 @@ const (
 	ErrBadOutputDir    = Error("output directory must not be a sub-directory of the current working directory")
 	ErrSamplesRequired = Error("at least one sampleName:runID pair is required")
 
-	dirPerm = 0755
+	dirPerm    = 0755
+	outputFlag = "output"
 )
 
 // options for this cmd.
-var itlOutput string
+var (
+	itlOutput      string
+	dimsumOutput   string
+	dimsumFastqDir string
+	dimsumExe      string
+)
 
 // runCmd represents the run command.
 var runCmd = &cobra.Command{
@@ -66,6 +73,9 @@ var irodsToLustreCmd = &cobra.Command{
 	Short: "Run irods_to_lustre to get sample FASTQ files.",
 	Long: `Run irods_to_lustre to get sample FASTQ files.
 
+iRODS commands and the irods_to_lustre pipeline must be in your PATH before
+calling this command.
+
 Given desired samples, crams will be downloaded from iRODS, merged as necessary
 and FASTQ files created. The samples must be from the same study, otherwise an
 error will be raised. You must also specify an output directory with the -o
@@ -84,29 +94,27 @@ If output files already exist in the output directory for a sample, the process
 will be skipped for that sample.
 `,
 	Run: func(_ *cobra.Command, nameRunStrs []string) {
-		nameRuns := nameRunStrsToNameRuns(nameRunStrs)
+		desired := getDesiredSamples(nameRunStrs)
 
-		err := validateOutputDir(itlOutput)
+		err := validateFastqOutputDir(itlOutput)
 		if err != nil {
 			die(err)
 		}
 
-		ss, err := getAllSponsorSamples()
+		itl, err := itl.New(desired, itlOutput)
 		if err != nil {
 			die(err)
 		}
 
-		filtered, err := ss.Filter(nameRuns)
-		if err != nil {
-			die(err)
-		}
+		if len(itl.SampleNameRuns()) == 0 {
+			info("fastqs for these samples already exist in the output directory")
 
-		itl, err := itl.New(filtered, itlOutput)
-		if err != nil {
-			die(err)
+			return
 		}
 
 		cmd, tsvPath := itl.GenerateSamplesTSVCommand()
+
+		infof("running command to generate samples TSV file:\n%s", cmd)
 
 		err = executeCmd(cmd)
 		if err != nil {
@@ -121,20 +129,24 @@ will be skipped for that sample.
 		for _, fc := range fcs {
 			cmd = fc.Command()
 
+			infof("running command to get fastq file for %s:\n%s", fc.IDRun(), cmd)
+
 			err = executeCmd(cmd)
 			if err != nil {
 				die(err)
 			}
 
-			err = fc.CopyFastqFiles()
+			err = fc.MoveFastqFiles()
 			if err != nil {
 				die(err)
 			}
 		}
+
+		infof("fastq files for %d samples downloaded to %s", len(fcs), itlOutput)
 	},
 }
 
-func validateOutputDir(outputDir string) error {
+func validateFastqOutputDir(outputDir string) error {
 	absOut, err := filepath.Abs(outputDir)
 	if err != nil {
 		return err
@@ -167,18 +179,30 @@ func createDirIfNotExist(dir string, statErr error) error {
 	return os.MkdirAll(dir, dirPerm)
 }
 
-func getAllSponsorSamples() (samples.Samples, error) {
+func getDesiredSamples(nameRunStrs []string) samples.Samples {
+	nameRuns := nameRunStrsToNameRuns(nameRunStrs)
+
 	c, err := config.FromEnv()
 	if err != nil {
-		return nil, err
+		die(err)
 	}
 
-	db, sheets, err := getDBAndSheets(c)
+	db, s, _, err := getDBAndSheets(c)
 	if err != nil {
-		return nil, err
+		die(err)
 	}
 
-	return sponsorSamples(c, db, sheets)
+	ss, err := sponsorSamples(c, db, s)
+	if err != nil {
+		die(err)
+	}
+
+	filtered, err := ss.Filter(nameRuns)
+	if err != nil {
+		die(err)
+	}
+
+	return filtered
 }
 
 func nameRunStrsToNameRuns(nameRunStrs []string) []samples.NameRun {
@@ -218,15 +242,105 @@ func executeCmd(cmd string) error {
 	return execCmd.Run()
 }
 
+// dimsumCmd represents the dimsum command.
+var dimsumCmd = &cobra.Command{
+	Use:   "dimsum",
+	Short: "Run dimsum.",
+	Long: `Run dimsum.
+
+The module of dimsum's dependencies must be loaded before calling this command.
+You must also supply the path to the DiMSum executable with the --exe option.
+The default value for --exe assumes DiMSum is in your PATH.
+
+The fastqs for your samples should already have been generated using the
+irods-to-lustre sub-command. You must supply the -o directory of that command
+as the -f option to this command.
+
+Given desired samples, this command will run DiMSum on the appropriate FASTQ
+files, generating the needed DiMSum experiment design file.
+
+The samples must be from the same study, and share the same dimsum-related
+library metadata, otherwise an error will be raised.
+
+You must also specify an output directory with the -o option, which will be
+created if it doesn't exist. In this output directory, a unique sub-directory
+will be created corresponding to your choice of samples and dimsum options. If
+that unique sub-directory already exists, nothing will be done.
+
+Samples should be supplied as a series of sampleName:runID pairs. All other
+options should be supplied before these. An example command line could look like
+this:
+$ dimsum-automation run dimsum -o /output/dir -f /fastqs/dir \
+    --barcodeIdentityPath /path/to/barcode AMA1:1234 AMA2:5678
+
+Note that the current working directory will be used for various working files
+and it is expected that you delete this directory afterwards, ie. that you run
+this command via wr without --cwd_matters. -o must therefore not be a sub
+directory of the current working directory, or the working directory itself.
+`,
+	Run: func(_ *cobra.Command, nameRunStrs []string) {
+		desired := getDesiredSamples(nameRunStrs)
+
+		design, err := dimsum.NewExperimentDesign(desired)
+		if err != nil {
+			die(err)
+		}
+
+		dir := "./"
+
+		experimentPath, err := design.Write(dir)
+		if err != nil {
+			die(err)
+		}
+
+		infof("created experiment design file: %s", experimentPath)
+
+		vsearchMinQual := 20
+		startStage := 0
+		fitnessMinInputCountAny := 10
+		fitnessMinInputCountAll := 0
+		barcodeIdentityPath := "barcode_identity.txt"
+
+		d := dimsum.New(
+			dimsumExe,
+			dimsumFastqDir,
+			barcodeIdentityPath,
+			design.ID(),
+			vsearchMinQual,
+			startStage,
+			fitnessMinInputCountAny,
+			fitnessMinInputCountAll,
+			design.LibraryMetaData(),
+		)
+
+		cmd := d.Command(dir, design.LibraryMetaData())
+
+		infof("will run DiMSum:\n%s", cmd)
+	},
+}
+
 func init() {
 	RootCmd.AddCommand(runCmd)
 	runCmd.AddCommand(irodsToLustreCmd)
+	runCmd.AddCommand(dimsumCmd)
 
 	// flags specific to these sub-commands
-	irodsToLustreCmd.Flags().StringVarP(&itlOutput, "output", "o", "",
+	irodsToLustreCmd.Flags().StringVarP(&itlOutput, outputFlag, "o", "",
 		"output directory for FASTQ files")
+	markFlagRequired(irodsToLustreCmd, outputFlag)
 
-	err := irodsToLustreCmd.MarkFlagRequired("output")
+	dimsumCmd.Flags().StringVarP(&dimsumOutput, outputFlag, "o", "",
+		"output directory")
+	markFlagRequired(dimsumCmd, outputFlag)
+	dimsumCmd.Flags().StringVarP(&dimsumFastqDir, "fastqs", "f", "",
+		"directory containing FASTQ files")
+	markFlagRequired(dimsumCmd, "fastqs")
+	dimsumCmd.Flags().StringVarP(&dimsumExe, "exe", "e", "DiMSum",
+		"path to your DiMSum executable")
+}
+
+func markFlagRequired(cmd *cobra.Command, flagName string) {
+	err := cmd.MarkFlagRequired(flagName)
 	if err != nil {
 		die(err)
 	}

@@ -77,8 +77,9 @@ type Experiment struct {
 	Pair2       string  // Pair2 is the filename of the second pair of FASTQ files.
 	CellDensity float32 // CellDensity is the cell density at the time of sampling.
 	// Generations is the amount of times the cells have divided between 0.05 and the final cell density.
-	Generations   float32
-	SelectionTime float32 // SelectionTime is the selection time.
+	Generations            float32
+	SelectionTime          float32 // SelectionTime is the selection time.
+	sheets.LibraryMetaData         // LibraryMetaData is the metadata for the library used in the experiment.
 }
 
 // SelectionReplicate converts the selection number to a replicate number.
@@ -99,6 +100,13 @@ func (ed ExperimentDesign) ID() string {
 	return ed[0].ID
 }
 
+// LibraryMetaData returns the library metadata of the first experiment in the
+// design, which is assumed to be the same for all experiments. This is a
+// precondition for NewExperimentDesign().
+func (ed ExperimentDesign) LibraryMetaData() sheets.LibraryMetaData {
+	return ed[0].LibraryMetaData
+}
+
 // NewExperimentDesign creates an experiment design from the given samples.
 // It returns an error if there are multiple experiments in the samples.
 func NewExperimentDesign(samples []samples.Sample) (ExperimentDesign, error) {
@@ -109,15 +117,16 @@ func NewExperimentDesign(samples []samples.Sample) (ExperimentDesign, error) {
 		fastqBasenamePrefix := itl.FastqBasenamePrefix(sample.SampleID, sample.RunID)
 
 		exp := Experiment{
-			ID:            sample.ExperimentID,
-			SampleName:    sample.SampleName,
-			Replicate:     sample.Replicate,
-			Selection:     sample.Selection,
-			Pair1:         fastqBasenamePrefix + itl.FastqPair1Suffix,
-			Pair2:         fastqBasenamePrefix + itl.FastqPair2Suffix,
-			CellDensity:   sample.OD,
-			Generations:   sample.Generations(),
-			SelectionTime: sample.Time,
+			ID:              sample.ExperimentID,
+			SampleName:      sample.SampleName,
+			Replicate:       sample.Replicate,
+			Selection:       sample.Selection,
+			Pair1:           fastqBasenamePrefix + itl.FastqPair1Suffix,
+			Pair2:           fastqBasenamePrefix + itl.FastqPair2Suffix,
+			CellDensity:     sample.OD,
+			Generations:     sample.Generations(),
+			SelectionTime:   sample.Time,
+			LibraryMetaData: sample.LibraryMetaData,
 		}
 
 		design = append(design, exp)
@@ -202,7 +211,8 @@ type DimSum struct {
 //   - fitnessMinInputCountAll: Minimum input count for all fitness calculations.
 //   - libMeta: Metadata for the library used in the experiment, from which
 //     MaxSubstitutions will be taken (a default value of 2 will be used
-//     if not defined in the metadata).
+//     if not defined in the metadata). If you've made a ExperimentDesign, you
+//     can use its LibraryMetaData() method to get this.
 func New(exe, fastqDir, barcodeIdentityPath, experiment string,
 	vsearchMinQual, startStage, fitnessMinInputCountAny, fitnessMinInputCountAll int,
 	libMeta sheets.LibraryMetaData) DimSum {
@@ -238,7 +248,8 @@ func New(exe, fastqDir, barcodeIdentityPath, experiment string,
 //
 // Parameters:
 //   - dir: The directory where the output files will be stored.
-//   - libMeta: Metadata for the library used in the experiment.
+//   - libMeta: Metadata for the library used in the experiment. If you have an
+//     ExperimentDesign, you can use its LibraryMetaData() method to get this.
 func (d *DimSum) Command(dir string, libMeta sheets.LibraryMetaData) string {
 	cmd := fmt.Sprintf("%s -i %s -l %s -g %s -e %s --cutadapt5First %s --cutadapt5Second %s "+
 		"-n %d -a %.2f -q %d -o %s -p %s -s %d -w %s -c %d "+
