@@ -62,19 +62,37 @@ func (s sampleRun) Key() string {
 	return fmt.Sprintf("%s.%s", s.sampleID, s.runID)
 }
 
-func (s sampleRun) TSVPath(outputDir string) string {
-	return filepath.Join(outputDir, s.Key()+tsvExtension)
+func (s sampleRun) TSVPath() string {
+	return filepath.Join(".", s.Key()+tsvExtension)
+}
+
+func (s sampleRun) FastqPath(outputDir, pairSuffix string) string {
+	return filepath.Join(outputDir, s.Key()+pairSuffix)
 }
 
 // ITL lets you use irods_to_lustre to get fastqs for certain samples.
 type ITL struct {
 	studyID    string
 	sampleRuns []sampleRun
+	fastqDir   string
 }
 
 // New creates a new ITL for the given samples, checking that all samples are
 // from the same study.
-func New(inputSamples []samples.Sample) (*ITL, error) {
+//
+// Supply the final output directory for the fastq files you'll create by
+// running the GenerateSamplesTSVCommand() command, followed by
+// FilterSamplesTSV(), followed by the FastqCreator.Command() commands.
+//
+// If the output directory already contains the fastq files for a sample that
+// chain of operations would create, that input sample will be ignored. If it
+// contains some but not all of the fastq files for a sample, an error will be
+// returned.
+//
+// You can use SampleNameRuns() to get the "sampleName:runID"s of the unignored
+// samples we will operate on. If none are returned, you won't need to do
+// anything, as all your desired fastq files already exist.
+func New(inputSamples []samples.Sample, fastqDir string) (*ITL, error) {
 	if len(inputSamples) == 0 {
 		return nil, ErrNoStudies
 	}
@@ -84,6 +102,21 @@ func New(inputSamples []samples.Sample) (*ITL, error) {
 		return nil, ErrNoStudies
 	}
 
+	sampleRuns, err := extractSampleRuns(inputSamples, studyID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ITL{
+		studyID:    studyID,
+		sampleRuns: sampleRuns,
+		fastqDir:   fastqDir,
+	}, nil
+}
+
+// extractSampleRuns processes input samples to create unique sample runs,
+// validating that all samples belong to the given study ID.
+func extractSampleRuns(inputSamples []samples.Sample, studyID string) ([]sampleRun, error) {
 	sampleRunMap := make(map[string]sampleRun, len(inputSamples))
 	sampleRunOrder := make([]string, 0, len(inputSamples))
 
@@ -100,21 +133,17 @@ func New(inputSamples []samples.Sample) (*ITL, error) {
 
 		if _, exists := sampleRunMap[key]; !exists {
 			sampleRunMap[key] = sr
-
 			sampleRunOrder = append(sampleRunOrder, key)
 		}
 	}
 
-	sampleRuns := make([]sampleRun, 0, len(sampleRunMap))
+	sampleRuns := make([]sampleRun, len(sampleRunMap))
 
-	for _, key := range sampleRunOrder {
-		sampleRuns = append(sampleRuns, sampleRunMap[key])
+	for i, key := range sampleRunOrder {
+		sampleRuns[i] = sampleRunMap[key]
 	}
 
-	return &ITL{
-		studyID:    studyID,
-		sampleRuns: sampleRuns,
-	}, nil
+	return sampleRuns, nil
 }
 
 // GenerateSamplesTSVCommand returns a command line for irods_to_lustre that
@@ -131,13 +160,12 @@ func (i *ITL) GenerateSamplesTSVCommand() (string, string) {
 }
 
 // FilterSamplesTSV creates a TSV file for each sample run in the ITL and
-// returns a slice of FastqCreator structs, each containing the path to the TSV
-// file and the output directory for that sample run.
-func (i *ITL) FilterSamplesTSV(inputTSVPath, outputDir string) ([]FastqCreator, error) {
+// returns a slice of FastqCreator.
+func (i *ITL) FilterSamplesTSV(inputTSVPath string) ([]FastqCreator, error) {
 	fcs := make([]FastqCreator, 0, len(i.sampleRuns))
 
 	for _, sr := range i.sampleRuns {
-		tsvPath, err := createPerSampleRunTSV(inputTSVPath, outputDir, sr)
+		tsvPath, err := createPerSampleRunTSV(inputTSVPath, sr)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +173,7 @@ func (i *ITL) FilterSamplesTSV(inputTSVPath, outputDir string) ([]FastqCreator, 
 		fcs = append(fcs, FastqCreator{
 			sampleRun: sr,
 			tsvPath:   tsvPath,
-			outputDir: outputDir,
+			finalDir:  i.fastqDir,
 		})
 	}
 

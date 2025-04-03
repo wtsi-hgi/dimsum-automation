@@ -34,19 +34,20 @@ import (
 )
 
 const (
-	FastqPair1Suffix = "_1.fastq.gz"
-	FastqPair2Suffix = "_2.fastq.gz"
+	FastqPair1Suffix       = "_1.fastq.gz"
+	FastqPair2Suffix       = "_2.fastq.gz"
+	ErrFastqExistsDiffSize = Error("fastq file already exists with a different size")
 
 	fastqOutputPathSuffix = ".output"
 	fastqOutputSubDir     = "fastq"
+	dirPerm               = 0755
 )
 
-// FastqCreator is a struct that holds the information needed to create fastq
-// files for a sample.
+// FastqCreator holds the information needed to create fastq files for a sample.
 type FastqCreator struct {
 	sampleRun sampleRun
 	tsvPath   string
-	outputDir string
+	finalDir  string
 }
 
 // Command returns a command line for irods_to_lustre that will use our TSV file
@@ -64,20 +65,23 @@ func (fc *FastqCreator) Command() string {
 }
 
 func (fc *FastqCreator) outputPathPrefix() string {
-	return filepath.Join(fc.outputDir, fc.sampleRun.Key())
+	return filepath.Join(".", fc.sampleRun.Key())
 }
 
-// CopyFastqFiles copies the pair 1 and 2 fastq files created by irods_to_lustre
-// to the given directory, renaming them to be based on sampleRun instead of
-// just sampleID.
-func (fc *FastqCreator) CopyFastqFiles(finalDir string) error {
+// CopyFastqFiles moves the pair 1 and 2 fastq files created by irods_to_lustre
+// to our final fastq directory, renaming them to be based on sampleRun instead
+// of just sampleID.
+//
+// If the destination files already exist and have the same size, nothing is
+// done. If they have different sizes, an error is returned.
+func (fc *FastqCreator) CopyFastqFiles() error {
 	sourceDir := filepath.Join(fc.outputPathPrefix()+fastqOutputPathSuffix, fastqOutputSubDir)
 
 	for _, suffix := range []string{FastqPair1Suffix, FastqPair2Suffix} {
 		sourceFile := filepath.Join(sourceDir, fc.sampleRun.sampleID+suffix)
-		destFile := filepath.Join(finalDir, fc.sampleRun.Key()+suffix)
+		destFile := fc.sampleRun.FastqPath(fc.finalDir, suffix)
 
-		if err := copyFile(sourceFile, destFile); err != nil {
+		if err := moveFile(sourceFile, destFile); err != nil {
 			return err
 		}
 	}
@@ -92,22 +96,73 @@ func FastqBasenamePrefix(sampleID, runID string) string {
 	return sampleRun{sampleID: sampleID, runID: runID}.Key()
 }
 
-func copyFile(src, dst string) error {
-	sourceFile, err := os.Open(src)
+// moveFile moves a file from src to dst. If the destination file already exists
+// and has the same size, nothing is done. If it exists with a different size,
+// an error is returned. If it doesn't exist, a rename is attempted. If that
+// fails, a copy is attempted. If that fails, an error is returned.
+func moveFile(src, dst string) error {
+	if err := checkExistingFile(src, dst); err != nil {
+		return err
+	}
+
+	if err := os.MkdirAll(filepath.Dir(dst), dirPerm); err != nil {
+		return err
+	}
+
+	if err := os.Rename(src, dst); err == nil {
+		return nil
+	}
+
+	return copyAndRemove(src, dst)
+}
+
+// checkExistingFile checks if destination file exists and compares sizes with
+// source.
+func checkExistingFile(src, dst string) error {
+	dstInfo, err := os.Stat(dst)
+	if os.IsNotExist(err) {
+		return nil
+	}
+
 	if err != nil {
 		return err
 	}
 
-	defer sourceFile.Close()
-
-	destFile, err := os.Create(dst)
+	srcInfo, err := os.Stat(src)
 	if err != nil {
 		return err
 	}
 
-	defer destFile.Close()
+	if srcInfo.Size() == dstInfo.Size() {
+		return nil
+	}
 
-	_, err = io.Copy(destFile, sourceFile)
+	return ErrFastqExistsDiffSize
+}
 
-	return err
+// copyAndRemove copies src to dst and removes src if successful.
+func copyAndRemove(src, dst string) error {
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+
+	defer srcFile.Close()
+
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+
+	defer dstFile.Close()
+
+	if _, err = io.Copy(dstFile, srcFile); err != nil {
+		return err
+	}
+
+	if err = dstFile.Close(); err != nil {
+		return err
+	}
+
+	return os.Remove(src)
 }

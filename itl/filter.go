@@ -35,7 +35,7 @@ const (
 	ErrNoSamplesFound = Error("no matching samples found in TSV file")
 )
 
-func createPerSampleRunTSV(inputTSVPath, outputDir string, sr sampleRun) (string, error) {
+func createPerSampleRunTSV(inputTSVPath string, sr sampleRun) (string, error) {
 	data, err := os.ReadFile(inputTSVPath)
 	if err != nil {
 		return "", err
@@ -51,7 +51,7 @@ func createPerSampleRunTSV(inputTSVPath, outputDir string, sr sampleRun) (string
 		return "", err
 	}
 
-	outPath := sr.TSVPath(outputDir)
+	outPath := sr.TSVPath()
 
 	return outPath, writeFilteredTSV(outPath, filteredLines)
 }

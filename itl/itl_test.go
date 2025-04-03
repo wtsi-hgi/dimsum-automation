@@ -79,7 +79,9 @@ func TestITL(t *testing.T) {
 			dir := t.TempDir()
 			t.Chdir(dir)
 
-			itl, err := New(testSamples)
+			finalDir := t.TempDir()
+
+			itl, err := New(testSamples, finalDir)
 			So(err, ShouldBeNil)
 			So(itl, ShouldNotBeNil)
 			So(itl.studyID, ShouldEqual, studyID)
@@ -101,7 +103,7 @@ func TestITL(t *testing.T) {
 			)
 			So(tsvPath, ShouldEqual, tsvOutputPath)
 
-			fcs, err := itl.FilterSamplesTSV(testSamplesTSVPath, ".")
+			fcs, err := itl.FilterSamplesTSV(testSamplesTSVPath)
 			So(err, ShouldBeNil)
 			So(fcs, ShouldHaveLength, len(testSamples))
 
@@ -121,46 +123,54 @@ func TestITL(t *testing.T) {
 					),
 				)
 
-				So(fileContents(
-					filepath.Join(".", sampleRun+".tsv")),
+				So(fileContents(filepath.Join(".", sampleRun+".tsv")),
 					ShouldEqual,
 					fileContents(testSamplesTSVPath+"."+sampleRun))
 
 				err = createTestFastqFiles(sampleRun)
 				So(err, ShouldBeNil)
 
-				finalDir := filepath.Join(dir, "final")
+				suffixes := []string{FastqPair1Suffix, FastqPair2Suffix}
 
-				err = os.MkdirAll(finalDir, userPerm)
-				So(err, ShouldBeNil)
+				expectedContents := make([]string, len(suffixes))
+				sourcePaths := make([]string, len(suffixes))
 
-				err = fcs[i].CopyFastqFiles(finalDir)
-				So(err, ShouldBeNil)
-
-				for _, suffix := range []string{FastqPair1Suffix, FastqPair2Suffix} {
+				for i, suffix := range suffixes {
 					expectedBasename := sampleRun[:7] + "_id" + suffix
+					path := filepath.Join(sampleRun+".output", fastqOutputSubDir, expectedBasename)
+					expectedContents[i] = fileContents(path)
+					sourcePaths[i] = path
+				}
 
-					So(fileContents(
-						filepath.Join(finalDir, sampleRun+suffix)),
+				err = fcs[i].CopyFastqFiles()
+				So(err, ShouldBeNil)
+
+				for i, suffix := range suffixes {
+					So(fileContents(filepath.Join(finalDir, sampleRun+suffix)),
 						ShouldEqual,
-						fileContents(filepath.Join(sampleRun+".output", fastqOutputSubDir, expectedBasename)))
+						expectedContents[i])
+
+					_, err := os.Stat(sourcePaths[i])
+					So(err, ShouldNotBeNil)
+					So(os.IsNotExist(err), ShouldBeTrue)
 				}
 			}
 		})
 
 		Convey("You can't make a new ITL with samples from multiple studies, or no studies", func() {
 			testSamples[0].Sample.StudyID = "study2"
+			dir := t.TempDir()
 
-			itl, err := New(testSamples)
+			itl, err := New(testSamples, dir)
 			So(err, ShouldNotBeNil)
 			So(itl, ShouldBeNil)
 
 			testSamples[0].Sample.StudyID = ""
 
-			_, err = New([]samples.Sample{testSamples[0]})
+			_, err = New([]samples.Sample{testSamples[0]}, dir)
 			So(err, ShouldNotBeNil)
 
-			_, err = New(nil)
+			_, err = New(nil, dir)
 			So(err, ShouldNotBeNil)
 		})
 	})

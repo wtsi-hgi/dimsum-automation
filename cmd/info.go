@@ -59,7 +59,7 @@ the run sub-commands.
 	Run: func(_ *cobra.Command, _ []string) {
 		err := sampleInfo()
 		if err != nil {
-			die("%s", err.Error())
+			die(err)
 		}
 	},
 }
@@ -74,17 +74,7 @@ func sampleInfo() error {
 		return err
 	}
 
-	sc, err := sheets.ServiceCredentialsFromConfig(c)
-	if err != nil {
-		return err
-	}
-
-	sheets, err := sheets.New(sc)
-	if err != nil {
-		return err
-	}
-
-	db, err := mlwh.New(mlwh.MySQLConfigFromConfig(c))
+	db, sheets, err := getDBAndSheets(c)
 	if err != nil {
 		return err
 	}
@@ -180,20 +170,12 @@ func sampleInfo() error {
 
 	cliPrint("\n\nMerged sample info:\n")
 
-	client := samples.New(db, sheets, samples.ClientOptions{
-		SheetID:       c.SheetID,
-		CacheLifetime: cacheLifetime,
-		Prefetch:      []string{sponsor},
-	})
-
-	defer client.Close()
-
-	clientSamples, err := client.ForSponsor(sponsor)
+	ss, err := sponsorSamples(c, db, sheets)
 	if err != nil {
 		return err
 	}
 
-	for _, sample := range clientSamples {
+	for _, sample := range ss {
 		bytes, _ := json.MarshalIndent(sample, "", "  ") //nolint:errcheck,errchkjson
 		cliPrint(string(bytes))
 	}
@@ -242,4 +224,32 @@ func sampleInfo() error {
 	// fmt.Printf("$ %s\n\nNB: %s was created, but barcode_identity.txt is a placeholder\n", cmd3, experimentPath)
 
 	return nil
+}
+
+func getDBAndSheets(c *config.Config) (*mlwh.MLWH, *sheets.Sheets, error) {
+	db, err := mlwh.New(mlwh.MySQLConfigFromConfig(c))
+	if err != nil {
+		return nil, nil, err
+	}
+
+	sc, err := sheets.ServiceCredentialsFromConfig(c)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	s, err := sheets.New(sc)
+
+	return db, s, err
+}
+
+func sponsorSamples(c *config.Config, db *mlwh.MLWH, s *sheets.Sheets) ([]samples.Sample, error) {
+	client := samples.New(db, s, samples.ClientOptions{
+		SheetID:       c.SheetID,
+		CacheLifetime: cacheLifetime,
+		Prefetch:      []string{sponsor},
+	})
+
+	defer client.Close()
+
+	return client.ForSponsor(sponsor)
 }

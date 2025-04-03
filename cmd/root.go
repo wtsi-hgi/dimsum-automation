@@ -36,6 +36,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
+type Error string
+
+func (e Error) Error() string { return string(e) }
+
 // appLogger is used for logging events in our commands.
 var appLogger = log15.New()
 
@@ -60,7 +64,7 @@ dimsum on them.
 // the rootCmd.
 func Execute() {
 	if err := RootCmd.Execute(); err != nil {
-		die("%s", err.Error())
+		die(err)
 	}
 }
 
@@ -79,8 +83,15 @@ func cliPrintf(msg string, a ...interface{}) {
 	fmt.Fprintf(os.Stdout, msg, a...)
 }
 
-// die is a convenience to log a message at the Error level and exit non zero.
-func die(msg string, a ...interface{}) {
+// die is a convenience to log an error at the Error level and exit non zero.
+func die(err error) {
+	appLogger.Error(err.Error())
+	os.Exit(1)
+}
+
+// dief is a convenience to log a message, with printf formatting args, at the
+// Error level and exit non zero.
+func dief(msg string, a ...interface{}) {
 	appLogger.Error(fmt.Sprintf(msg, a...))
 	os.Exit(1)
 }
