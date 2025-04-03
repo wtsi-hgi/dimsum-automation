@@ -146,6 +146,22 @@ func extractSampleRuns(inputSamples []samples.Sample, studyID string) ([]sampleR
 	return sampleRuns, nil
 }
 
+// SampleNameRuns returns a slice of strings of the form "sampleName.runID" for
+// each sample run in the ITL.
+//
+// This is useful for checking which samples will be processed by the
+// GenerateSamplesTSVCommand() command, and which ones already exist in the
+// fastq directory.
+func (i *ITL) SampleNameRuns() []string {
+	sampleNameRuns := make([]string, len(i.sampleRuns))
+
+	for i, sr := range i.sampleRuns {
+		sampleNameRuns[i] = sr.Key()
+	}
+
+	return sampleNameRuns
+}
+
 // GenerateSamplesTSVCommand returns a command line for irods_to_lustre that
 // will generate a TSV file of the sample metadata for our study. It also
 // returns the path to that TSV file.

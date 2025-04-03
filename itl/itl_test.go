@@ -72,7 +72,7 @@ func TestITL(t *testing.T) {
 			},
 		}
 
-		Convey("You can generate irods_to_lustre command lines, filter the initial tsv, and copy the fastqs", func() {
+		Convey("You can generate irods_to_lustre command lines, filter the initial tsv, and move the fastqs", func() {
 			testSamplesTSVPath, err := filepath.Abs(filepath.Join("testdata", "samples.tsv"))
 			So(err, ShouldBeNil)
 
@@ -89,6 +89,11 @@ func TestITL(t *testing.T) {
 				{sampleID: "sample1_id", runID: "run1"},
 				{sampleID: "sample1_id", runID: "run2"},
 				{sampleID: "sample2_id", runID: "run1"},
+			})
+			So(itl.SampleNameRuns(), ShouldResemble, []string{
+				"sample1_id.run1",
+				"sample1_id.run2",
+				"sample2_id.run1",
 			})
 
 			cmd, tsvPath := itl.GenerateSamplesTSVCommand()
