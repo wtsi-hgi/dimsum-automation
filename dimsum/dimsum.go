@@ -27,9 +27,12 @@
 package dimsum
 
 import (
+	"crypto/sha1"
+	"encoding/hex"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/wtsi-hgi/dimsum-automation/itl"
@@ -109,7 +112,7 @@ func (ed ExperimentDesign) LibraryMetaData() sheets.LibraryMetaData {
 
 // NewExperimentDesign creates an experiment design from the given samples.
 // It returns an error if there are multiple experiments in the samples.
-func NewExperimentDesign(samples []samples.Sample) (ExperimentDesign, error) {
+func NewExperimentDesign(samples samples.Samples) (ExperimentDesign, error) {
 	design := make(ExperimentDesign, 0, len(samples))
 	experiments := make(map[string]int)
 
@@ -204,16 +207,15 @@ type DimSum struct {
 //   - exe: Path to the DiMSum executable.
 //   - fastqDir: Directory containing FASTQ files.
 //   - barcodeIdentityPath: Path to the barcode identity file. This can be blank.
-//   - experiment: Name of the experiment.
 //   - vsearchMinQual: Minimum quality score for VSearch.
 //   - startStage: Stage to start the analysis from.
 //   - fitnessMinInputCountAny: Minimum input count for any fitness calculation.
 //   - fitnessMinInputCountAll: Minimum input count for all fitness calculations.
 //   - libMeta: Metadata for the library used in the experiment, from which
-//     MaxSubstitutions will be taken (a default value of 2 will be used
-//     if not defined in the metadata). If you've made a ExperimentDesign, you
-//     can use its LibraryMetaData() method to get this.
-func New(exe, fastqDir, barcodeIdentityPath, experiment string,
+//     ExperimentID and MaxSubstitutions will be taken (a default value of 2
+//     will be used if not defined in the metadata). If you've made a
+//     ExperimentDesign, you can use its LibraryMetaData() method to get this.
+func New(exe, fastqDir, barcodeIdentityPath string,
 	vsearchMinQual, startStage, fitnessMinInputCountAny, fitnessMinInputCountAll int,
 	libMeta sheets.LibraryMetaData) DimSum {
 	maxSubs := libMeta.MaxSubstitutions
@@ -225,7 +227,7 @@ func New(exe, fastqDir, barcodeIdentityPath, experiment string,
 		Exe:                     exe,
 		FastqDir:                fastqDir,
 		BarcodeIdentityPath:     barcodeIdentityPath,
-		Experiment:              experiment,
+		Experiment:              libMeta.ExperimentID,
 		VSearchMinQual:          vsearchMinQual,
 		StartStage:              startStage,
 		FitnessMinInputCountAny: fitnessMinInputCountAny,
@@ -242,6 +244,31 @@ func New(exe, fastqDir, barcodeIdentityPath, experiment string,
 		RetainIntermediateFiles: DefaultRetainIntermediateFiles,
 		DesignPairDuplicates:    DefaultDesignPairDuplicates,
 	}
+}
+
+// Key generates a unique key that includes our Experiment, the given sample
+// names and runIDs (sorted), and a condensed encoded representation of all our
+// other properties.
+func (d *DimSum) Key(samples samples.Samples) string {
+	sampleInfo := make([]string, len(samples))
+
+	for i, sample := range samples {
+		sampleInfo[i] = fmt.Sprintf("%s.%s", sample.SampleName, sample.RunID)
+	}
+
+	sort.Strings(sampleInfo)
+
+	combinedProps := fmt.Sprintf("%s_%d_%d_%d_%d_%d_%.2f_%d_%t_%s_%t",
+		d.BarcodeIdentityPath, d.VSearchMinQual, d.StartStage,
+		d.FitnessMinInputCountAny, d.FitnessMinInputCountAll,
+		d.CutAdaptMinLength, d.CutAdaptErrorRate, d.MaxSubstitutions,
+		d.MixedSubstitutions, d.MutagenesisType, d.DesignPairDuplicates)
+
+	hasher := sha1.New()
+	hasher.Write([]byte(combinedProps))
+	encodedProps := hex.EncodeToString(hasher.Sum(nil))
+
+	return filepath.Join(d.Experiment, strings.Join(sampleInfo, ","), encodedProps)
 }
 
 // Command generates the DiMSum command to execute.

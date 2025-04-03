@@ -150,9 +150,11 @@ func TestDimsum(t *testing.T) {
 
 				So(design.LibraryMetaData(), ShouldResemble, libMeta)
 
-				dimsum := New(exe, fastqDir, barcodeIdentityPath, exp, vsearchMinQual, startStage,
+				dimsum := New(exe, fastqDir, barcodeIdentityPath, vsearchMinQual, startStage,
 					fitnessMinInputCountAny, fitnessMinInputCountAll, libMeta)
 				So(dimsum, ShouldNotBeNil)
+
+				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/69b24c9009b4933a204a8d2aace78d566eb8b31b")
 
 				cmd := dimsum.Command(dir, libMeta)
 				So(cmd, ShouldEqual, fmt.Sprintf(
@@ -172,12 +174,13 @@ func TestDimsum(t *testing.T) {
 					DefaultMutagenesisType, "T", "F", "F", barcodeIdentityPath,
 				))
 
-				dimsum = New(exe, fastqDir, "", exp, vsearchMinQual, startStage,
+				dimsum = New(exe, fastqDir, "", vsearchMinQual, startStage,
 					fitnessMinInputCountAny, fitnessMinInputCountAll, libMeta)
 				So(dimsum, ShouldNotBeNil)
 
 				cmd = dimsum.Command(dir, libMeta)
 				So(cmd, ShouldNotContainSubstring, "--barcodeIdentityPath")
+				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/631c90f196443c203f4eeea856da242fafcc1793")
 			})
 		})
 	})
