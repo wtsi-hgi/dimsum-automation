@@ -96,7 +96,7 @@ will be skipped for that sample.
 	Run: func(_ *cobra.Command, nameRunStrs []string) {
 		desired := getDesiredSamples(nameRunStrs)
 
-		err := validateFastqOutputDir(itlOutput)
+		err := validateOutputDir(itlOutput)
 		if err != nil {
 			die(err)
 		}
@@ -146,7 +146,7 @@ will be skipped for that sample.
 	},
 }
 
-func validateFastqOutputDir(outputDir string) error {
+func validateOutputDir(outputDir string) error {
 	absOut, err := filepath.Abs(outputDir)
 	if err != nil {
 		return err
@@ -286,15 +286,6 @@ directory of the current working directory, or the working directory itself.
 			die(err)
 		}
 
-		dir := "./"
-
-		experimentPath, err := design.Write(dir)
-		if err != nil {
-			die(err)
-		}
-
-		infof("created experiment design file: %s", experimentPath)
-
 		vsearchMinQual := 20
 		startStage := 0
 		fitnessMinInputCountAny := 10
@@ -305,7 +296,6 @@ directory of the current working directory, or the working directory itself.
 			dimsumExe,
 			dimsumFastqDir,
 			barcodeIdentityPath,
-			design.ID(),
 			vsearchMinQual,
 			startStage,
 			fitnessMinInputCountAny,
@@ -313,10 +303,43 @@ directory of the current working directory, or the working directory itself.
 			design.LibraryMetaData(),
 		)
 
+		err = validateOutputDir(dimsumOutput)
+		if err != nil {
+			die(err)
+		}
+
+		uniqueDimsumOutputDir := dimsumUniqueOutputDir(d, dimsumOutput, desired)
+
+		dir := "."
+
+		experimentPath, err := design.Write(dir)
+		if err != nil {
+			die(err)
+		}
+
+		infof("created experiment design file: %s", experimentPath)
+
 		cmd := d.Command(dir, design.LibraryMetaData())
 
-		infof("will run DiMSum:\n%s", cmd)
+		infof("would run dimsum:\n%s", cmd)
+
+		infof("then would move output files to %s", uniqueDimsumOutputDir)
 	},
+}
+
+func dimsumUniqueOutputDir(d dimsum.DimSum, outputDir string, desired samples.Samples) string {
+	uniqueDimsumOutputDir := filepath.Join(outputDir, d.Key(desired))
+
+	if _, err := os.Stat(uniqueDimsumOutputDir); err == nil || !os.IsNotExist(err) {
+		dief("unique dimsum output directory %s already exists", uniqueDimsumOutputDir)
+	}
+
+	err := os.MkdirAll(uniqueDimsumOutputDir, dirPerm)
+	if err != nil {
+		die(err)
+	}
+
+	return uniqueDimsumOutputDir
 }
 
 func init() {
