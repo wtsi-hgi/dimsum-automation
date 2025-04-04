@@ -275,7 +275,8 @@ library metadata, otherwise an error will be raised.
 You must also specify an output directory with the -o option, which will be
 created if it doesn't exist. In this output directory, a unique sub-directory
 will be created corresponding to your choice of samples and dimsum options. If
-that unique sub-directory already exists, nothing will be done.
+that unique sub-directory already exists and has files in it, an error will be
+raised.
 
 Samples should be supplied as a series of sampleName:runID pairs. All other
 options should be supplied before these. An example command line could look like
@@ -340,8 +341,17 @@ directory of the current working directory, or the working directory itself.
 func dimsumUniqueOutputDir(d dimsum.DimSum, outputDir string, desired samples.Samples) string {
 	uniqueDimsumOutputDir := filepath.Join(outputDir, d.Key(desired))
 
-	if _, err := os.Stat(uniqueDimsumOutputDir); err == nil || !os.IsNotExist(err) {
-		dief("unique dimsum output directory %s already exists", uniqueDimsumOutputDir)
+	if _, err := os.Stat(uniqueDimsumOutputDir); err == nil {
+		entries, readErr := os.ReadDir(uniqueDimsumOutputDir)
+		if readErr != nil {
+			die(readErr)
+		}
+
+		if len(entries) > 0 {
+			dief("unique dimsum output directory %s already exists and is not empty", uniqueDimsumOutputDir)
+		}
+	} else if !os.IsNotExist(err) {
+		die(err)
 	}
 
 	err := os.MkdirAll(uniqueDimsumOutputDir, dirPerm)
