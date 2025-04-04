@@ -330,9 +330,17 @@ directory of the current working directory, or the working directory itself.
 
 		infof("created experiment design file: %s", experimentPath)
 
-		cmd := d.Command(dir, design.LibraryMetaData())
+		cmd, err := d.Command(design.LibraryMetaData())
+		if err != nil {
+			die(err)
+		}
 
-		infof("would run dimsum:\n%s", cmd)
+		infof("will run dimsum:\n%s", cmd)
+
+		err = executeCmd(cmd)
+		if err != nil {
+			die(err)
+		}
 
 		infof("then would move output files to %s", uniqueDimsumOutputDir)
 	},

@@ -151,7 +151,9 @@ func TestDimsum(t *testing.T) {
 
 				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/69b24c9009b4933a204a8d2aace78d566eb8b31b")
 
-				cmd := dimsum.Command(dir, libMeta)
+				cmd, err := dimsum.Command(libMeta)
+				So(err, ShouldBeNil)
+
 				So(cmd, ShouldEqual, fmt.Sprintf(
 					"%s -i %s -l %s -g %s -e %s --cutadapt5First %s --cutadapt5Second %s "+
 						"-n %d -a %.2f -q %d -o %s -p %s -s %d -w %s -c %d "+
@@ -159,20 +161,24 @@ func TestDimsum(t *testing.T) {
 						"--maxSubstitutions %d --mutagenesisType %s --retainIntermediateFiles %s "+
 						"--mixedSubstitutions %s --experimentDesignPairDuplicates %s "+
 						"--barcodeIdentityPath %s",
-					exe, fastqDir, DefaultFastqExtension, "TRUE", designPath,
+					exe, fastqDir, DefaultFastqExtension, "TRUE", filepath.Base(designPath),
 					libMeta.Cutadapt5First+cutAdaptRequired+"TCGA"+cutAdaptOptional,
 					libMeta.Cutadapt5Second+cutAdaptRequired+"CAGT"+cutAdaptOptional,
 					DefaultCutAdaptMinLength, DefaultCutAdaptErrorRate,
-					DefaultVsearchMinQual, filepath.Join(dir, outputSubdir), dimsumProjectPrefix+exp,
+					DefaultVsearchMinQual, outputSubdir, dimsumProjectPrefix+exp,
 					DefaultStartStage, libMeta.Wt, DefaultCores, DefaultFitnessMinInputCountAny,
 					DefaultFitnessMinInputCountAll, 3,
 					DefaultMutagenesisType, "T", "F", "F", barcodeIdentityPath,
 				))
 
+				_, err = os.Stat(outputSubdir)
+				So(err, ShouldBeNil)
+
 				dimsum = New(exe, fastqDir, "", libMeta)
 				So(dimsum, ShouldNotBeNil)
 
-				cmd = dimsum.Command(dir, libMeta)
+				cmd, err = dimsum.Command(libMeta)
+				So(err, ShouldBeNil)
 				So(cmd, ShouldNotContainSubstring, "--barcodeIdentityPath")
 				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/631c90f196443c203f4eeea856da242fafcc1793")
 			})

@@ -270,25 +270,32 @@ func (d *DimSum) Key(samples samples.Samples) string {
 	return filepath.Join(d.Experiment, strings.Join(sampleInfo, ","), encodedProps)
 }
 
-// Command generates the DiMSum command to execute.
+// Command generates the DiMSum command to execute. It assumes you will run the
+// command in the current working directory, and output files will be set to be
+// written to a subdirectory called "outputs", which will be created if it
+// doesn't exist.
 //
 // Parameters:
 //   - dir: The directory where the output files will be stored.
 //   - libMeta: Metadata for the library used in the experiment. If you have an
 //     ExperimentDesign, you can use its LibraryMetaData() method to get this.
-func (d *DimSum) Command(dir string, libMeta sheets.LibraryMetaData) string {
+func (d *DimSum) Command(libMeta sheets.LibraryMetaData) (string, error) {
+	if err := os.MkdirAll(outputSubdir, 0755); err != nil {
+		return "", err
+	}
+
 	cmd := fmt.Sprintf("%s -i %s -l %s -g %s -e %s --cutadapt5First %s --cutadapt5Second %s "+
 		"-n %d -a %.2f -q %d -o %s -p %s -s %d -w %s -c %d "+
 		"--fitnessMinInputCountAny %d --fitnessMinInputCountAll %d "+
 		"--maxSubstitutions %d --mutagenesisType %s --retainIntermediateFiles %s "+
 		"--mixedSubstitutions %s --experimentDesignPairDuplicates %s",
-		d.Exe, d.FastqDir, d.FastqExtension, d.gzippedStr(), experimentDesignPath(dir, d.Experiment),
+		d.Exe, d.FastqDir, d.FastqExtension, d.gzippedStr(), experimentDesignPath(".", d.Experiment),
 		libMeta.Cutadapt5First+cutAdaptRequired+
 			reverseComplement(libMeta.Cutadapt5Second)+cutAdaptOptional,
 		libMeta.Cutadapt5Second+cutAdaptRequired+
 			reverseComplement(libMeta.Cutadapt5First)+cutAdaptOptional,
 		d.CutAdaptMinLength, d.CutAdaptErrorRate,
-		d.VSearchMinQual, filepath.Join(dir, outputSubdir), dimsumProjectPrefix+d.Experiment,
+		d.VSearchMinQual, outputSubdir, dimsumProjectPrefix+d.Experiment,
 		d.StartStage, libMeta.Wt, d.Cores, d.FitnessMinInputCountAny,
 		d.FitnessMinInputCountAll, d.MaxSubstitutions,
 		d.MutagenesisType, d.retainIntermediateFilesStr(), d.mixedSubstitutionsStr(),
@@ -299,7 +306,7 @@ func (d *DimSum) Command(dir string, libMeta sheets.LibraryMetaData) string {
 		cmd += " --barcodeIdentityPath " + d.BarcodeIdentityPath
 	}
 
-	return cmd
+	return cmd, nil
 }
 
 func (d *DimSum) gzippedStr() string {
