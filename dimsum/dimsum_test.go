@@ -140,13 +140,12 @@ func TestDimsum(t *testing.T) {
 			))
 
 			Convey("Then you can generate a dimsum command line", func() {
-				exe := "/path/to/DiMSum"
 				fastqDir := "/path/to/fastqs"
 				barcodeIdentityPath := "barcode_identity.txt"
 
 				So(design.LibraryMetaData(), ShouldResemble, libMeta)
 
-				dimsum := New(exe, fastqDir, barcodeIdentityPath, libMeta)
+				dimsum := New(fastqDir, barcodeIdentityPath, libMeta)
 				So(dimsum, ShouldNotBeNil)
 
 				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/69b24c9009b4933a204a8d2aace78d566eb8b31b")
@@ -161,7 +160,7 @@ func TestDimsum(t *testing.T) {
 						"--maxSubstitutions %d --mutagenesisType %s --retainIntermediateFiles %s "+
 						"--mixedSubstitutions %s --experimentDesignPairDuplicates %s "+
 						"--barcodeIdentityPath %s",
-					exe, fastqDir, DefaultFastqExtension, "TRUE", filepath.Base(designPath),
+					DimSumExe, fastqDir, DefaultFastqExtension, "TRUE", filepath.Base(designPath),
 					libMeta.Cutadapt5First+cutAdaptRequired+"TCGA"+cutAdaptOptional,
 					libMeta.Cutadapt5Second+cutAdaptRequired+"CAGT"+cutAdaptOptional,
 					DefaultCutAdaptMinLength, DefaultCutAdaptErrorRate,
@@ -174,7 +173,7 @@ func TestDimsum(t *testing.T) {
 				_, err = os.Stat(outputSubdir)
 				So(err, ShouldBeNil)
 
-				dimsum = New(exe, fastqDir, "", libMeta)
+				dimsum = New(fastqDir, "", libMeta)
 				So(dimsum, ShouldNotBeNil)
 
 				cmd, err = dimsum.Command(libMeta)

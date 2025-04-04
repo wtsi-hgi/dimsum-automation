@@ -51,7 +51,6 @@ var (
 	itlOutput                     string
 	dimsumOutput                  string
 	dimsumFastqDir                string
-	dimsumExe                     string
 	dimsumBarcodeIdentityPath     string
 	dimsumVsearchMinQual          int
 	dimsumStartStage              int
@@ -258,9 +257,7 @@ var dimsumCmd = &cobra.Command{
 	Short: "Run dimsum.",
 	Long: `Run dimsum.
 
-The module of dimsum's dependencies must be loaded before calling this command.
-You must also supply the path to the DiMSum executable with the --exe option.
-The default value for --exe assumes DiMSum is in your PATH.
+DiMSum must be in your PATH.
 
 The fastqs for your samples should already have been generated using the
 irods-to-lustre sub-command. You must supply the -o directory of that command
@@ -298,7 +295,6 @@ directory of the current working directory, or the working directory itself.
 		}
 
 		d := dimsum.New(
-			dimsumExe,
 			dimsumFastqDir,
 			dimsumBarcodeIdentityPath,
 			design.LibraryMetaData(),
@@ -386,8 +382,6 @@ func init() {
 	dimsumCmd.Flags().StringVarP(&dimsumFastqDir, "fastqs", "f", "",
 		"directory containing FASTQ files")
 	markFlagRequired(dimsumCmd, "fastqs")
-	dimsumCmd.Flags().StringVarP(&dimsumExe, "exe", "e", "DiMSum",
-		"path to your DiMSum executable")
 
 	dimsumCmd.Flags().StringVar(&dimsumBarcodeIdentityPath, "barcodeIdentityPath", "",
 		"path to your barcode identity file")

@@ -52,6 +52,7 @@ const (
 	DefaultFitnessMinInputCountAny = 10
 	DefaultFitnessMinInputCountAll = 0
 
+	DimSumExe                      = "DiMSum"
 	DefaultFastqExtension          = ".fastq"
 	DefaultGzipped                 = true
 	DefaultCutAdaptMinLength       = 100
@@ -183,7 +184,6 @@ func experimentDesignPath(dir, experiment string) string {
 // DimSum represents the parameters for running DiMSum. All parameters are
 type DimSum struct {
 	// Required parameters
-	Exe                     string // Path to the DiMSum executable
 	FastqDir                string // Directory containing FASTQ files
 	BarcodeIdentityPath     string // Path to the barcode identity file; can be blank
 	Experiment              string // Name of the experiment
@@ -209,21 +209,19 @@ type DimSum struct {
 // supplied or extractable from libMeta.
 //
 // Parameters:
-//   - exe: Path to the DiMSum executable.
 //   - fastqDir: Directory containing FASTQ files.
 //   - barcodeIdentityPath: Path to the barcode identity file. This can be blank.
 //   - libMeta: Metadata for the library used in the experiment, from which
 //     ExperimentID and MaxSubstitutions will be taken (a default value of 2
 //     will be used if not defined in the metadata). If you've made a
 //     ExperimentDesign, you can use its LibraryMetaData() method to get this.
-func New(exe, fastqDir, barcodeIdentityPath string, libMeta sheets.LibraryMetaData) DimSum {
+func New(fastqDir, barcodeIdentityPath string, libMeta sheets.LibraryMetaData) DimSum {
 	maxSubs := libMeta.MaxSubstitutions
 	if maxSubs == 0 {
 		maxSubs = DefaultMaxSubstitutions
 	}
 
 	return DimSum{
-		Exe:                 exe,
 		FastqDir:            fastqDir,
 		BarcodeIdentityPath: barcodeIdentityPath,
 		Experiment:          libMeta.ExperimentID,
@@ -289,7 +287,7 @@ func (d *DimSum) Command(libMeta sheets.LibraryMetaData) (string, error) {
 		"--fitnessMinInputCountAny %d --fitnessMinInputCountAll %d "+
 		"--maxSubstitutions %d --mutagenesisType %s --retainIntermediateFiles %s "+
 		"--mixedSubstitutions %s --experimentDesignPairDuplicates %s",
-		d.Exe, d.FastqDir, d.FastqExtension, d.gzippedStr(), experimentDesignPath(".", d.Experiment),
+		DimSumExe, d.FastqDir, d.FastqExtension, d.gzippedStr(), experimentDesignPath(".", d.Experiment),
 		libMeta.Cutadapt5First+cutAdaptRequired+
 			reverseComplement(libMeta.Cutadapt5Second)+cutAdaptOptional,
 		libMeta.Cutadapt5Second+cutAdaptRequired+
