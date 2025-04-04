@@ -47,6 +47,11 @@ func (e Error) Error() string { return string(e) }
 const (
 	ErrMultipleExperiments = Error("multiple experiments in samples")
 
+	DefaultVsearchMinQual          = 20
+	DefaultStartStage              = 0
+	DefaultFitnessMinInputCountAny = 10
+	DefaultFitnessMinInputCountAll = 0
+
 	DefaultFastqExtension          = ".fastq"
 	DefaultGzipped                 = true
 	DefaultCutAdaptMinLength       = 100

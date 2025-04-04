@@ -48,10 +48,20 @@ const (
 
 // options for this cmd.
 var (
-	itlOutput      string
-	dimsumOutput   string
-	dimsumFastqDir string
-	dimsumExe      string
+	itlOutput                     string
+	dimsumOutput                  string
+	dimsumFastqDir                string
+	dimsumExe                     string
+	dimsumBarcodeIdentityPath     string
+	dimsumVsearchMinQual          int
+	dimsumStartStage              int
+	dimsumFitnessMinInputCountAny int
+	dimsumFitnessMinInputCountAll int
+	dimsumCutAdaptMinLength       int
+	dimsumCutAdaptErrorRate       float32
+	dimsumMixedSubstitutions      bool
+	dimsumMutagenesisType         string
+	dimsumDesignPairDuplicates    bool
 )
 
 // runCmd represents the run command.
@@ -286,22 +296,22 @@ directory of the current working directory, or the working directory itself.
 			die(err)
 		}
 
-		vsearchMinQual := 20
-		startStage := 0
-		fitnessMinInputCountAny := 10
-		fitnessMinInputCountAll := 0
-		barcodeIdentityPath := "barcode_identity.txt"
-
 		d := dimsum.New(
 			dimsumExe,
 			dimsumFastqDir,
-			barcodeIdentityPath,
-			vsearchMinQual,
-			startStage,
-			fitnessMinInputCountAny,
-			fitnessMinInputCountAll,
+			dimsumBarcodeIdentityPath,
+			dimsumVsearchMinQual,
+			dimsumStartStage,
+			dimsumFitnessMinInputCountAny,
+			dimsumFitnessMinInputCountAll,
 			design.LibraryMetaData(),
 		)
+
+		d.CutAdaptMinLength = dimsumCutAdaptMinLength
+		d.CutAdaptErrorRate = dimsumCutAdaptErrorRate
+		d.MixedSubstitutions = dimsumMixedSubstitutions
+		d.MutagenesisType = dimsumMutagenesisType
+		d.DesignPairDuplicates = dimsumDesignPairDuplicates
 
 		err = validateOutputDir(dimsumOutput)
 		if err != nil {
@@ -360,6 +370,27 @@ func init() {
 	markFlagRequired(dimsumCmd, "fastqs")
 	dimsumCmd.Flags().StringVarP(&dimsumExe, "exe", "e", "DiMSum",
 		"path to your DiMSum executable")
+
+	dimsumCmd.Flags().StringVar(&dimsumBarcodeIdentityPath, "barcodeIdentityPath", "",
+		"path to your barcode identity file")
+	dimsumCmd.Flags().IntVar(&dimsumVsearchMinQual, "vsearchMinQual", dimsum.DefaultVsearchMinQual,
+		"passed through to dimsum")
+	dimsumCmd.Flags().IntVar(&dimsumStartStage, "startStage", dimsum.DefaultStartStage,
+		"passed through to dimsum")
+	dimsumCmd.Flags().IntVar(&dimsumFitnessMinInputCountAny, "fitnessMinInputCountAny", dimsum.DefaultFitnessMinInputCountAny,
+		"passed through to dimsum")
+	dimsumCmd.Flags().IntVar(&dimsumFitnessMinInputCountAll, "fitnessMinInputCountAll", dimsum.DefaultFitnessMinInputCountAll,
+		"passed through to dimsum")
+	dimsumCmd.Flags().IntVar(&dimsumCutAdaptMinLength, "cutAdaptMinLength", dimsum.DefaultCutAdaptMinLength,
+		"passed through to dimsum")
+	dimsumCmd.Flags().Float32Var(&dimsumCutAdaptErrorRate, "cutAdaptErrorRate", dimsum.DefaultCutAdaptErrorRate,
+		"passed through to dimsum")
+	dimsumCmd.Flags().BoolVar(&dimsumMixedSubstitutions, "mixedSubstitutions", dimsum.DefaultMixedSubstitutions,
+		"passed through to dimsum")
+	dimsumCmd.Flags().StringVar(&dimsumMutagenesisType, "mutagenesisType", dimsum.DefaultMutagenesisType,
+		"passed through to dimsum")
+	dimsumCmd.Flags().BoolVar(&dimsumDesignPairDuplicates, "designPairDuplicates", dimsum.DefaultDesignPairDuplicates,
+		"passed through to dimsum")
 }
 
 func markFlagRequired(cmd *cobra.Command, flagName string) {

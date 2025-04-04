@@ -142,10 +142,10 @@ func TestDimsum(t *testing.T) {
 			Convey("Then you can generate a dimsum command line", func() {
 				exe := "/path/to/DiMSum"
 				fastqDir := "/path/to/fastqs"
-				vsearchMinQual := 20
-				startStage := 0
-				fitnessMinInputCountAny := 10
-				fitnessMinInputCountAll := 0
+				vsearchMinQual := DefaultVsearchMinQual
+				startStage := DefaultStartStage
+				fitnessMinInputCountAny := DefaultFitnessMinInputCountAny
+				fitnessMinInputCountAll := DefaultFitnessMinInputCountAll
 				barcodeIdentityPath := "barcode_identity.txt"
 
 				So(design.LibraryMetaData(), ShouldResemble, libMeta)
