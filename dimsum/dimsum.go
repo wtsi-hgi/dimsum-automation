@@ -206,44 +206,38 @@ type DimSum struct {
 }
 
 // New creates a new DimSum instance with default values for the properties not
-// supplied.
+// supplied or extractable from libMeta.
 //
 // Parameters:
 //   - exe: Path to the DiMSum executable.
 //   - fastqDir: Directory containing FASTQ files.
 //   - barcodeIdentityPath: Path to the barcode identity file. This can be blank.
-//   - vsearchMinQual: Minimum quality score for VSearch.
-//   - startStage: Stage to start the analysis from.
-//   - fitnessMinInputCountAny: Minimum input count for any fitness calculation.
-//   - fitnessMinInputCountAll: Minimum input count for all fitness calculations.
 //   - libMeta: Metadata for the library used in the experiment, from which
 //     ExperimentID and MaxSubstitutions will be taken (a default value of 2
 //     will be used if not defined in the metadata). If you've made a
 //     ExperimentDesign, you can use its LibraryMetaData() method to get this.
-func New(exe, fastqDir, barcodeIdentityPath string,
-	vsearchMinQual, startStage, fitnessMinInputCountAny, fitnessMinInputCountAll int,
-	libMeta sheets.LibraryMetaData) DimSum {
+func New(exe, fastqDir, barcodeIdentityPath string, libMeta sheets.LibraryMetaData) DimSum {
 	maxSubs := libMeta.MaxSubstitutions
 	if maxSubs == 0 {
 		maxSubs = DefaultMaxSubstitutions
 	}
 
 	return DimSum{
-		Exe:                     exe,
-		FastqDir:                fastqDir,
-		BarcodeIdentityPath:     barcodeIdentityPath,
-		Experiment:              libMeta.ExperimentID,
-		VSearchMinQual:          vsearchMinQual,
-		StartStage:              startStage,
-		FitnessMinInputCountAny: fitnessMinInputCountAny,
-		FitnessMinInputCountAll: fitnessMinInputCountAll,
+		Exe:                 exe,
+		FastqDir:            fastqDir,
+		BarcodeIdentityPath: barcodeIdentityPath,
+		Experiment:          libMeta.ExperimentID,
+		MaxSubstitutions:    maxSubs,
 
+		VSearchMinQual:          DefaultVsearchMinQual,
+		StartStage:              DefaultStartStage,
+		FitnessMinInputCountAny: DefaultFitnessMinInputCountAny,
+		FitnessMinInputCountAll: DefaultFitnessMinInputCountAll,
 		FastqExtension:          DefaultFastqExtension,
 		Gzipped:                 DefaultGzipped,
 		CutAdaptMinLength:       DefaultCutAdaptMinLength,
 		CutAdaptErrorRate:       DefaultCutAdaptErrorRate,
 		Cores:                   DefaultCores,
-		MaxSubstitutions:        maxSubs,
 		MixedSubstitutions:      DefaultMixedSubstitutions,
 		MutagenesisType:         DefaultMutagenesisType,
 		RetainIntermediateFiles: DefaultRetainIntermediateFiles,

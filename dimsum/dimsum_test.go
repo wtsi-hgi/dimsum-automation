@@ -142,16 +142,11 @@ func TestDimsum(t *testing.T) {
 			Convey("Then you can generate a dimsum command line", func() {
 				exe := "/path/to/DiMSum"
 				fastqDir := "/path/to/fastqs"
-				vsearchMinQual := DefaultVsearchMinQual
-				startStage := DefaultStartStage
-				fitnessMinInputCountAny := DefaultFitnessMinInputCountAny
-				fitnessMinInputCountAll := DefaultFitnessMinInputCountAll
 				barcodeIdentityPath := "barcode_identity.txt"
 
 				So(design.LibraryMetaData(), ShouldResemble, libMeta)
 
-				dimsum := New(exe, fastqDir, barcodeIdentityPath, vsearchMinQual, startStage,
-					fitnessMinInputCountAny, fitnessMinInputCountAll, libMeta)
+				dimsum := New(exe, fastqDir, barcodeIdentityPath, libMeta)
 				So(dimsum, ShouldNotBeNil)
 
 				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/69b24c9009b4933a204a8d2aace78d566eb8b31b")
@@ -168,14 +163,13 @@ func TestDimsum(t *testing.T) {
 					libMeta.Cutadapt5First+cutAdaptRequired+"TCGA"+cutAdaptOptional,
 					libMeta.Cutadapt5Second+cutAdaptRequired+"CAGT"+cutAdaptOptional,
 					DefaultCutAdaptMinLength, DefaultCutAdaptErrorRate,
-					vsearchMinQual, filepath.Join(dir, outputSubdir), dimsumProjectPrefix+exp,
-					startStage, libMeta.Wt, DefaultCores, fitnessMinInputCountAny,
-					fitnessMinInputCountAll, 3,
+					DefaultVsearchMinQual, filepath.Join(dir, outputSubdir), dimsumProjectPrefix+exp,
+					DefaultStartStage, libMeta.Wt, DefaultCores, DefaultFitnessMinInputCountAny,
+					DefaultFitnessMinInputCountAll, 3,
 					DefaultMutagenesisType, "T", "F", "F", barcodeIdentityPath,
 				))
 
-				dimsum = New(exe, fastqDir, "", vsearchMinQual, startStage,
-					fitnessMinInputCountAny, fitnessMinInputCountAll, libMeta)
+				dimsum = New(exe, fastqDir, "", libMeta)
 				So(dimsum, ShouldNotBeNil)
 
 				cmd = dimsum.Command(dir, libMeta)

@@ -300,13 +300,13 @@ directory of the current working directory, or the working directory itself.
 			dimsumExe,
 			dimsumFastqDir,
 			dimsumBarcodeIdentityPath,
-			dimsumVsearchMinQual,
-			dimsumStartStage,
-			dimsumFitnessMinInputCountAny,
-			dimsumFitnessMinInputCountAll,
 			design.LibraryMetaData(),
 		)
 
+		d.VSearchMinQual = dimsumVsearchMinQual
+		d.StartStage = dimsumStartStage
+		d.FitnessMinInputCountAny = dimsumFitnessMinInputCountAny
+		d.FitnessMinInputCountAll = dimsumFitnessMinInputCountAll
 		d.CutAdaptMinLength = dimsumCutAdaptMinLength
 		d.CutAdaptErrorRate = dimsumCutAdaptErrorRate
 		d.MixedSubstitutions = dimsumMixedSubstitutions
