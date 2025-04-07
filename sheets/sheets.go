@@ -134,6 +134,12 @@ func (s *Sheet) Columns(cols ...string) ([][]string, error) {
 		row := make([]string, len(colIndexes))
 
 		for j, colIndex := range colIndexes {
+			if colIndex >= len(wholeRow) {
+				row[j] = ""
+
+				continue
+			}
+
 			row[j] = wholeRow[colIndex]
 		}
 
