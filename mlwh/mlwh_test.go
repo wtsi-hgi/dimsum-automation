@@ -62,7 +62,7 @@ func TestMLWH(t *testing.T) {
 			failed := 0
 
 			for _, sample := range samples {
-				if sample.ManualQC {
+				if sample.ManualQC == "1" {
 					passed++
 				} else {
 					failed++

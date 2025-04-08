@@ -31,6 +31,7 @@ import (
 	"time"
 
 	"github.com/go-sql-driver/mysql"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 const (
@@ -39,6 +40,12 @@ const (
 	maxOpenConns    = 10
 	maxIdleConns    = 10
 )
+
+type Sample struct {
+	StudyID   string
+	StudyName string
+	types.Sample
+}
 
 // MLWH is a connection to the MLWH database.
 type MLWH struct {
@@ -60,16 +67,6 @@ func New(c *mysql.Config) (*MLWH, error) {
 	return &MLWH{pool: pool}, pool.Ping()
 }
 
-// Sample represents a sample in the MLWH, including study and run information.
-type Sample struct {
-	StudyID    string
-	StudyName  string
-	RunID      string
-	SampleID   string
-	SampleName string
-	ManualQC   bool
-}
-
 const getSamples = `
 SELECT DISTINCT st.id_study_lims as StudyID, st.name as StudyName,
 r.id_run as RunID, sa.sanger_sample_id as SangerSampleID,
@@ -82,15 +79,19 @@ WHERE st.faculty_sponsor = ? and (fc.manual_qc = '1' or fc.manual_qc = '0')
 `
 
 // SamplesForSponsor returns all samples in the MLWH for the given sponsor.
-func (m *MLWH) SamplesForSponsor(sponsor string) ([]Sample, error) {
+func (m *MLWH) SamplesForSponsor(sponsor string) ([]*Sample, error) {
 	rows, err := m.pool.Query(getSamples, sponsor)
 	if err != nil {
 		return nil, err
 	}
-
 	defer rows.Close()
 
-	var samples []Sample
+	return m.processSampleRows(rows)
+}
+
+// processSampleRows extracts Sample objects from database rows.
+func (m *MLWH) processSampleRows(rows *sql.Rows) ([]*Sample, error) {
+	var samples []*Sample //nolint:prealloc
 
 	for rows.Next() {
 		var sample Sample
@@ -106,7 +107,7 @@ func (m *MLWH) SamplesForSponsor(sponsor string) ([]Sample, error) {
 			return nil, err
 		}
 
-		samples = append(samples, sample)
+		samples = append(samples, &sample)
 	}
 
 	if err := rows.Close(); err != nil {

@@ -47,7 +47,7 @@ const (
 type MLWHClient interface {
 	// SamplesForSponsor returns all samples for the given sponsor, including
 	// study and run information.
-	SamplesForSponsor(sponsor string) ([]mlwh.Sample, error)
+	SamplesForSponsor(sponsor string) ([]*mlwh.Sample, error)
 
 	// Close closes the connection to the MLWH database.
 	Close() error

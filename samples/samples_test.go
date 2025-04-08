@@ -44,13 +44,13 @@ const (
 )
 
 type mockMLWH struct {
-	msamples  []mlwh.Sample
+	msamples  []*mlwh.Sample
 	queryTime time.Duration
 	err       error
 	mu        sync.RWMutex
 }
 
-func (m *mockMLWH) SamplesForSponsor(sponsor string) ([]mlwh.Sample, error) {
+func (m *mockMLWH) SamplesForSponsor(sponsor string) ([]*mlwh.Sample, error) {
 	time.Sleep(m.queryTime)
 
 	m.mu.RLock()
@@ -59,7 +59,7 @@ func (m *mockMLWH) SamplesForSponsor(sponsor string) ([]mlwh.Sample, error) {
 	return m.msamples, m.err
 }
 
-func (m *mockMLWH) setSamples(samples []mlwh.Sample) {
+func (m *mockMLWH) setSamples(samples []*mlwh.Sample) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -85,35 +85,43 @@ func (m *mockSheets) DimSumMetaData(sheetID string) (types.Libraries, error) {
 
 func TestSamplesMock(t *testing.T) {
 	Convey("Given mock mlwh and sheets connections", t, func() {
-		msamples := []mlwh.Sample{
+		msamples := []*mlwh.Sample{
 			{
-				SampleID:   "sampleID1",
-				SampleName: "sample1",
-				RunID:      "run1",
-				StudyID:    "studyID1",
-				StudyName:  "study1",
-				ManualQC:   true,
+				StudyID:   "studyID1",
+				StudyName: "study1",
+				Sample: types.Sample{
+					SampleID:   "sampleID1",
+					SampleName: "sample1",
+					RunID:      "run1",
+					ManualQC:   "1",
+				},
 			},
 			{
-				SampleID:   "sampleID2",
-				SampleName: "sample2",
-				RunID:      "run2",
-				StudyID:    "studyID1",
-				StudyName:  "study1",
+				StudyID:   "studyID1",
+				StudyName: "study1",
+				Sample: types.Sample{
+					SampleID:   "sampleID2",
+					SampleName: "sample2",
+					RunID:      "run2",
+				},
 			},
 			{
-				SampleID:   "sampleID3",
-				SampleName: "sample3",
-				RunID:      "run3",
-				StudyID:    "studyID2",
-				StudyName:  "study2",
+				StudyID:   "studyID2",
+				StudyName: "study2",
+				Sample: types.Sample{
+					SampleID:   "sampleID3",
+					SampleName: "sample3",
+					RunID:      "run3",
+				},
 			},
 			{
-				SampleID:   "sampleID4",
-				SampleName: "sample4",
-				RunID:      "run4",
-				StudyID:    "studyID3",
-				StudyName:  "study3",
+				StudyID:   "studyID3",
+				StudyName: "study3",
+				Sample: types.Sample{
+					SampleID:   "sampleID4",
+					SampleName: "sample4",
+					RunID:      "run4",
+				},
 			},
 		}
 		mlwhQueryTime := 100 * time.Millisecond
