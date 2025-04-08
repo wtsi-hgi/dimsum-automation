@@ -27,6 +27,7 @@
 package sheets
 
 import (
+	"fmt"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -69,7 +70,6 @@ func TestSheets(t *testing.T) {
 			So(sheetE, ShouldNotBeNil)
 			So(sheetE.ColumnHeaders, ShouldContain, "library_id")
 			So(sheetE.ColumnHeaders, ShouldContain, "experiment_id")
-			So(sheetE.ColumnHeaders, ShouldContain, "projectName")
 			So(sheetE.ColumnHeaders, ShouldContain, "startStage")
 			So(sheetE.ColumnHeaders, ShouldContain, "stopStage")
 			So(sheetE.ColumnHeaders, ShouldContain, "barcodeDesignPath")
@@ -108,7 +108,6 @@ func TestSheets(t *testing.T) {
 			So(sheetE.ColumnHeaders, ShouldContain, "retainedReplicates")
 			So(sheetE.ColumnHeaders, ShouldContain, "stranded")
 			So(sheetE.ColumnHeaders, ShouldContain, "paired")
-			So(sheetE.ColumnHeaders, ShouldContain, "experimentDesignPairDuplicates")
 			So(sheetE.ColumnHeaders, ShouldContain, "synonymSequencePath")
 			So(sheetE.ColumnHeaders, ShouldContain, "transLibrary")
 			So(sheetE.ColumnHeaders, ShouldContain, "transLibraryReverseComplement")
@@ -119,7 +118,7 @@ func TestSheets(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(sheetS, ShouldNotBeNil)
 			So(sheetS.ColumnHeaders, ShouldContain, "experiment_id")
-			So(sheetS.ColumnHeaders, ShouldContain, "sample_id")
+			So(sheetS.ColumnHeaders, ShouldContain, "mlwh_sample_name")
 			So(sheetS.ColumnHeaders, ShouldContain, "selection")
 			So(sheetS.ColumnHeaders, ShouldContain, "experiment_replicate")
 			So(sheetS.ColumnHeaders, ShouldContain, "selection_time")
@@ -163,11 +162,17 @@ func TestSheets(t *testing.T) {
 			So(lib762.MaxSubstitutions, ShouldEqual, 2)
 
 			So(len(libs[0].Experiments), ShouldBeGreaterThan, 0)
-			So(len(libs[0].Experiments[0].Samples), ShouldBeGreaterThan, 0)
+			So(libs[0].Experiments[0].Samples, ShouldHaveLength, 6)
+
+			for i, exp := range libs[0].Experiments {
+				for _, s := range exp.Samples {
+					s.RunID = fmt.Sprintf("run%d", i+1)
+				}
+			}
 
 			lib, err := libs.Subset([]*types.Sample{
-				{SampleName: "AM762abstart1", RunID: "?"},
-				{SampleName: "AM762abstart5", RunID: "?"},
+				{SampleName: "AM762abstart1", RunID: "run1"},
+				{SampleName: "AM762abstart5", RunID: "run1"},
 			})
 			So(err, ShouldBeNil)
 			So(lib.LibraryID, ShouldEqual, "762")
@@ -205,16 +210,16 @@ func TestSheets(t *testing.T) {
 			So(s2.CellDensity, ShouldEqual, "1.27")
 
 			_, err = libs.Subset([]*types.Sample{
-				{SampleName: "AM762abstart1", RunID: "?"},
-				{SampleName: "AM762808start2", RunID: "?"},
+				{SampleName: "AM762abstart1", RunID: "run1"},
+				{SampleName: "AM762808start2", RunID: "run2"},
 			})
-			So(err, ShouldNotBeNil)
+			So(err, ShouldEqual, types.ErrNotAllSamplesInSameExperiment)
 
 			_, err = libs.Subset([]*types.Sample{{SampleName: "AM762abstart1"}})
-			So(err, ShouldNotBeNil)
+			So(err, ShouldEqual, types.ErrNoSamplesRequested)
 
 			_, err = libs.Subset([]*types.Sample{{SampleName: "foo", RunID: "bar"}})
-			So(err, ShouldNotBeNil)
+			So(err, ShouldEqual, types.ErrSamplesNotFound)
 		})
 	})
 }

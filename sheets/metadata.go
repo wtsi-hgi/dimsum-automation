@@ -110,7 +110,6 @@ func (s *Sheets) getExperimentMetaData( //nolint:gocognit,gocyclo,funlen
 		"library_id",
 		"experiment_id",
 		"Assay",
-		"projectName",
 		"startStage",
 		"stopStage",
 		"barcodeDesignPath",
@@ -149,7 +148,6 @@ func (s *Sheets) getExperimentMetaData( //nolint:gocognit,gocyclo,funlen
 		"retainedReplicates",
 		"stranded",
 		"paired",
-		"experimentDesignPairDuplicates",
 		"synonymSequencePath",
 		"transLibrary",
 		"transLibraryReverseComplement",
@@ -171,61 +169,60 @@ func (s *Sheets) getExperimentMetaData( //nolint:gocognit,gocyclo,funlen
 
 		lib := libs[libI]
 
-		ws := row[25]
+		ws := row[24]
 		if ws == "" {
 			ws = lib.WildtypeSequence
 		}
 
 		ms := lib.MaxSubstitutions
-		if row[30] != "" {
-			ms = c.ToInt(row[30])
+		if row[29] != "" {
+			ms = c.ToInt(row[29])
 		}
 
 		exps[i] = &types.Experiment{
 			ExperimentID:                   row[1],
 			Assay:                          row[2],
-			ProjectName:                    row[3],
-			StartStage:                     c.ToInt(row[4]),
-			StopStage:                      c.ToInt(row[5]),
-			BarcodeDesignPath:              row[6],
-			BarcodeErrorRate:               c.ToFloatString(row[7]),
-			ExperimentDesignPairDuplicates: c.ToBool(row[8]),
-			CountPath:                      row[9],
-			BarcodeIdentityPath:            row[10],
-			Cutadapt5First:                 row[11],
-			Cutadapt5Second:                row[12],
-			CutadaptMinLength:              c.ToInt(row[13]),
-			CutadaptErrorRate:              c.ToFloatString(row[14]),
-			CutadaptOverlap:                c.ToInt(row[15]),
-			CutadaptCut5First:              row[16],
-			CutadaptCut5Second:             row[17],
-			CutadaptCut3First:              row[18],
-			CutadaptCut3Second:             row[19],
-			VsearchMinQual:                 c.ToInt(row[20]),
-			VsearchMaxQual:                 c.ToInt(row[21]),
-			VsearchMaxee:                   c.ToInt(row[22]),
-			VsearchMinovlen:                c.ToInt(row[23]),
-			ReverseComplement:              c.ToBool(row[24]),
+			StartStage:                     c.ToInt(row[3]),
+			StopStage:                      c.ToInt(row[4]),
+			BarcodeDesignPath:              row[5],
+			BarcodeErrorRate:               c.ToFloatString(row[6]),
+			ExperimentDesignPairDuplicates: c.ToBool(row[7]),
+			CountPath:                      row[8],
+			BarcodeIdentityPath:            row[9],
+			Cutadapt5First:                 row[10],
+			Cutadapt5Second:                row[11],
+			CutadaptMinLength:              c.ToInt(row[12]),
+			CutadaptErrorRate:              c.ToFloatString(row[13]),
+			CutadaptOverlap:                c.ToInt(row[14]),
+			CutadaptCut5First:              row[15],
+			CutadaptCut5Second:             row[16],
+			CutadaptCut3First:              row[17],
+			CutadaptCut3Second:             row[18],
+			VsearchMinQual:                 c.ToInt(row[19]),
+			VsearchMaxQual:                 c.ToInt(row[20]),
+			VsearchMaxee:                   c.ToInt(row[21]),
+			VsearchMinovlen:                c.ToInt(row[22]),
+			ReverseComplement:              c.ToBool(row[23]),
 			WildtypeSequence:               ws,
-			PermittedSequences:             row[26],
-			SequenceType:                   c.ToSequenceType(row[27]),
-			MutagenesisType:                c.ToMutagenesisType(row[28]),
-			Indels:                         row[29],
+			PermittedSequences:             row[25],
+			SequenceType:                   c.ToSequenceType(row[26]),
+			MutagenesisType:                c.ToMutagenesisType(row[27]),
+			Indels:                         row[28],
 			MaxSubstitutions:               ms,
-			MixedSubstitutions:             c.ToBool(row[31]),
-			FitnessMinInputCountAll:        c.ToInt(row[32]),
-			FitnessMinInputCountAny:        c.ToInt(row[33]),
-			FitnessMinOutputCountAll:       c.ToInt(row[34]),
-			FitnessMinOutputCountAny:       c.ToInt(row[35]),
-			FitnessNormalise:               c.ToBool(row[36]),
-			FitnessErrorModel:              c.ToBool(row[37]),
-			FitnessDropoutPseudocount:      c.ToInt(row[38]),
-			RetainedReplicates:             row[39],
-			Stranded:                       c.ToBool(row[40]),
-			Paired:                         c.ToBool(row[41]),
-			SynonymSequencePath:            row[42],
-			TransLibrary:                   c.ToBool(row[43]),
-			TransLibraryReverseComplement:  c.ToBool(row[44]),
+			MixedSubstitutions:             c.ToBool(row[30]),
+			FitnessMinInputCountAll:        c.ToInt(row[31]),
+			FitnessMinInputCountAny:        c.ToInt(row[32]),
+			FitnessMinOutputCountAll:       c.ToInt(row[33]),
+			FitnessMinOutputCountAny:       c.ToInt(row[34]),
+			FitnessNormalise:               c.ToBool(row[35]),
+			FitnessErrorModel:              c.ToBool(row[36]),
+			FitnessDropoutPseudocount:      c.ToInt(row[37]),
+			RetainedReplicates:             row[38],
+			Stranded:                       c.ToBool(row[39]),
+			Paired:                         c.ToBool(row[40]),
+			SynonymSequencePath:            row[41],
+			TransLibrary:                   c.ToBool(row[42]),
+			TransLibraryReverseComplement:  c.ToBool(row[43]),
 		}
 
 		lib.Experiments = append(lib.Experiments, exps[i])
@@ -249,7 +246,7 @@ func (s *Sheets) getSampleMetaData( //nolint:funlen
 
 	sampleRows, err := sheet.Columns(
 		"experiment_id",
-		"sample_id",
+		"mlwh_sample_name",
 		"selection",
 		"experiment_replicate",
 		"selection_time",

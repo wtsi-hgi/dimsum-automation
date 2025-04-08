@@ -73,7 +73,6 @@ func StringToMutagenesisType(s string) (MutagenesisType, error) {
 type Experiment struct {
 	ExperimentID                   string
 	Assay                          string
-	ProjectName                    string
 	StartStage                     int
 	StopStage                      int
 	BarcodeDesignPath              string
