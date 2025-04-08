@@ -33,7 +33,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/wtsi-hgi/dimsum-automation/sheets"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 func TestITL(t *testing.T) {
@@ -49,7 +49,7 @@ func TestITL(t *testing.T) {
 		sampleName1 := "sample1"
 		sampleName2 := "sample2"
 
-		testSamples := []*sheets.Sample{
+		testSamples := []*types.Sample{
 			{
 				RunID:        runID1,
 				SampleID:     sampleName1,
@@ -67,10 +67,10 @@ func TestITL(t *testing.T) {
 			},
 		}
 
-		testLib := &sheets.Library{
+		testLib := &types.Library{
 			LibraryID: "lib",
 			StudyID:   studyID,
-			Experiments: []*sheets.Experiment{
+			Experiments: []*types.Experiment{
 				{
 					ExperimentID: "exp",
 					Samples:      testSamples,
@@ -206,7 +206,7 @@ func TestITL(t *testing.T) {
 		Convey("You can't make a new ITL with multiple or no experiments", func() {
 			dir := t.TempDir()
 
-			testLib.Experiments = append(testLib.Experiments, &sheets.Experiment{
+			testLib.Experiments = append(testLib.Experiments, &types.Experiment{
 				ExperimentID: "exp2",
 			})
 

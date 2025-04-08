@@ -35,7 +35,7 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/config"
 	"github.com/wtsi-hgi/dimsum-automation/dimsum"
 	"github.com/wtsi-hgi/dimsum-automation/itl"
-	"github.com/wtsi-hgi/dimsum-automation/sheets"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 const (
@@ -188,7 +188,7 @@ func createDirIfNotExist(dir string, statErr error) error {
 	return os.MkdirAll(dir, dirPerm)
 }
 
-func subsetDesiredSamples(nameRunStrs []string) *sheets.Library {
+func subsetDesiredSamples(nameRunStrs []string) *types.Library {
 	nameRuns := nameRunStrsToNameRuns(nameRunStrs)
 
 	c, err := config.FromEnv()
@@ -206,7 +206,7 @@ func subsetDesiredSamples(nameRunStrs []string) *sheets.Library {
 		die(err)
 	}
 
-	filtered, err := libs.Subset(nameRuns...)
+	filtered, err := libs.Subset(nameRuns)
 	if err != nil {
 		die(err)
 	}
@@ -214,8 +214,8 @@ func subsetDesiredSamples(nameRunStrs []string) *sheets.Library {
 	return filtered
 }
 
-func nameRunStrsToNameRuns(nameRunStrs []string) []sheets.NameRun {
-	result := make([]sheets.NameRun, 0, len(nameRunStrs))
+func nameRunStrsToNameRuns(nameRunStrs []string) []*types.Sample {
+	result := make([]*types.Sample, 0, len(nameRunStrs))
 	done := make(map[string]bool)
 
 	for _, nameRunStr := range nameRunStrs {
@@ -228,9 +228,9 @@ func nameRunStrsToNameRuns(nameRunStrs []string) []sheets.NameRun {
 			dief("invalid sampleName:runID pair: %s", nameRunStr)
 		}
 
-		result = append(result, sheets.NameRun{
-			Name: parts[0],
-			Run:  parts[1],
+		result = append(result, &types.Sample{
+			SampleID: parts[0],
+			RunID:    parts[1],
 		})
 
 		done[nameRunStr] = true
@@ -338,7 +338,7 @@ directory of the current working directory, or the working directory itself.
 	},
 }
 
-func dimsumUniqueOutputDir(d dimsum.DimSum, outputDir string, desired []*sheets.Sample) string {
+func dimsumUniqueOutputDir(d dimsum.DimSum, outputDir string, desired []*types.Sample) string {
 	uniqueDimsumOutputDir := filepath.Join(outputDir, d.Key(desired))
 
 	if _, err := os.Stat(uniqueDimsumOutputDir); err == nil {

@@ -31,7 +31,7 @@ import (
 	"time"
 
 	"github.com/wtsi-hgi/dimsum-automation/mlwh"
-	"github.com/wtsi-hgi/dimsum-automation/sheets"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 type Error string
@@ -58,11 +58,11 @@ type SheetsClient interface {
 	// the sheet with the given id and extracts metadata for columns relevant to
 	// DimSum, returning a slice of Library that each contain a slice of their
 	// Experiments, that each contain a slice of their Samples.
-	DimSumMetaData(sheetID string) (sheets.Libraries, error)
+	DimSumMetaData(sheetID string) (types.Libraries, error)
 }
 
 type cache struct {
-	libs       map[string]sheets.Libraries
+	libs       map[string]types.Libraries
 	lastUpdate time.Time
 	lifetime   time.Duration
 	mu         sync.RWMutex
@@ -70,12 +70,12 @@ type cache struct {
 
 func newCache(lifetime time.Duration) *cache {
 	return &cache{
-		libs:     make(map[string]sheets.Libraries),
+		libs:     make(map[string]types.Libraries),
 		lifetime: lifetime,
 	}
 }
 
-func (c *cache) getData(sponsor string) (bool, sheets.Libraries) {
+func (c *cache) getData(sponsor string) (bool, types.Libraries) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
@@ -85,7 +85,7 @@ func (c *cache) getData(sponsor string) (bool, sheets.Libraries) {
 	return cached, data
 }
 
-func (c *cache) storeData(sponsor string, data sheets.Libraries) {
+func (c *cache) storeData(sponsor string, data types.Libraries) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -206,7 +206,7 @@ func (c *Client) LastPrefetchSuccess() time.Time {
 // If you have prefetching enabled, this always returns immediately with the
 // result of the last successful prefetch, which might have been longer than
 // CacheLifetime ago, if the last actual prefetch failed (see Err()).
-func (c *Client) ForSponsor(sponsor string) (sheets.Libraries, error) {
+func (c *Client) ForSponsor(sponsor string) (types.Libraries, error) {
 	cached, result := c.cache.getData(sponsor)
 
 	c.stopMu.RLock()
@@ -227,7 +227,7 @@ func (c *Client) ForSponsor(sponsor string) (sheets.Libraries, error) {
 	return result, nil
 }
 
-func (c *Client) freshForSponsorQuery(sponsor string) (sheets.Libraries, error) {
+func (c *Client) freshForSponsorQuery(sponsor string) (types.Libraries, error) {
 	samples, err := c.mc.SamplesForSponsor(sponsor)
 	if err != nil {
 		return nil, err

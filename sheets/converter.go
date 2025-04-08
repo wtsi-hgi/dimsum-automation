@@ -28,12 +28,8 @@ package sheets
 
 import (
 	"strconv"
-)
 
-const (
-	ErrInvalideMutagenesisType = Error("invalid mutagenesis type")
-	ErrInvalidSequenceType     = Error("invalid sequence type")
-	ErrInvalidSelection        = Error("invalid selection")
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 // converter converts strings to other types. The conversions do not return
@@ -130,25 +126,15 @@ func (c *converter) ToBool(s string) bool {
 //
 // If the error field is already set, this function does nothing and returns
 // MutagenesisTypeRandom.
-func (c *converter) ToMutagenesisType(s string) MutagenesisType {
+func (c *converter) ToMutagenesisType(s string) types.MutagenesisType {
 	if c.Err != nil {
-		return MutagenesisTypeRandom
+		return types.MutagenesisTypeRandom
 	}
 
-	if s == "" {
-		return MutagenesisTypeRandom
-	}
+	mt, err := types.StringToMutagenesisType(s)
+	c.Err = err
 
-	switch MutagenesisType(s) {
-	case MutagenesisTypeRandom:
-		return MutagenesisTypeRandom
-	case MutagenesisTypeCodon:
-		return MutagenesisTypeCodon
-	}
-
-	c.Err = ErrInvalideMutagenesisType
-
-	return MutagenesisTypeRandom
+	return mt
 }
 
 // ToSequenceType converts a string to a SequenceType. If the conversion fails,
@@ -156,27 +142,15 @@ func (c *converter) ToMutagenesisType(s string) MutagenesisType {
 //
 // If the error field is already set, this function does nothing and returns
 // SequenceTypeAuto.
-func (c *converter) ToSequenceType(s string) SequenceType {
+func (c *converter) ToSequenceType(s string) types.SequenceType {
 	if c.Err != nil {
-		return SequenceTypeAuto
+		return types.SequenceTypeAuto
 	}
 
-	if s == "" {
-		return SequenceTypeAuto
-	}
+	st, err := types.StringToSequenceType(s)
+	c.Err = err
 
-	switch SequenceType(s) {
-	case SequenceTypeNC:
-		return SequenceTypeNC
-	case SequenceTypeC:
-		return SequenceTypeC
-	case SequenceTypeAuto:
-		return SequenceTypeAuto
-	}
-
-	c.Err = ErrInvalidSequenceType
-
-	return SequenceTypeAuto
+	return st
 }
 
 // ToSelection converts a string to a Selection. If the conversion fails, the
@@ -184,19 +158,13 @@ func (c *converter) ToSequenceType(s string) SequenceType {
 //
 // If the error field is already set, this function does nothing and returns
 // SelectionInput.
-func (c *converter) ToSelection(s string) Selection {
+func (c *converter) ToSelection(s string) types.Selection {
 	if c.Err != nil {
-		return SelectionInput
+		return types.SelectionInput
 	}
 
-	switch Selection(s) {
-	case SelectionInput:
-		return SelectionInput
-	case SelectionOutput:
-		return SelectionOutput
-	}
+	sele, err := types.StringToSelection(s)
+	c.Err = err
 
-	c.Err = ErrInvalidSelection
-
-	return SelectionInput
+	return sele
 }

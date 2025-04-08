@@ -33,7 +33,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/wtsi-hgi/dimsum-automation/sheets"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 func TestDimsum(t *testing.T) {
@@ -42,12 +42,12 @@ func TestDimsum(t *testing.T) {
 		sample2 := "sample2"
 		run := "run"
 
-		testSamples := []*sheets.Sample{
+		testSamples := []*types.Sample{
 			{
 				SampleID:            sample1,
 				MLWHSampleID:        sample1 + "_id",
 				RunID:               run,
-				Selection:           sheets.SelectionInput,
+				Selection:           types.SelectionInput,
 				ExperimentReplicate: 1,
 				SelectionTime:       "0.5",
 				CellDensity:         "0.1",
@@ -56,14 +56,14 @@ func TestDimsum(t *testing.T) {
 				SampleID:            sample2,
 				MLWHSampleID:        sample2 + "_id",
 				RunID:               run,
-				Selection:           sheets.SelectionOutput,
+				Selection:           types.SelectionOutput,
 				ExperimentReplicate: 2,
 				SelectionTime:       "0.6",
 				CellDensity:         "0.2",
 			},
 		}
 
-		exp := &sheets.Experiment{
+		exp := &types.Experiment{
 			ExperimentID:     "exp",
 			WildtypeSequence: "wt",
 			MaxSubstitutions: 3,

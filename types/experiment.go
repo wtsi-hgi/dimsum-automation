@@ -24,22 +24,51 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ******************************************************************************/
 
-package sheets
+package types
 
 type SequenceType string
 
 const (
-	SequenceTypeNC   SequenceType = "noncoding"
-	SequenceTypeC    SequenceType = "coding"
-	SequenceTypeAuto SequenceType = "auto"
+	SequenceTypeNC         SequenceType = "noncoding"
+	SequenceTypeC          SequenceType = "coding"
+	SequenceTypeAuto       SequenceType = "auto"
+	ErrInvalidSequenceType              = Error("invalid sequence type")
 )
+
+// StringToSequenceType converts a string to a SequenceType. Blank strings
+// are treated as SequenceTypeAuto.
+func StringToSequenceType(s string) (SequenceType, error) {
+	switch SequenceType(s) {
+	case SequenceTypeNC:
+		return SequenceTypeNC, nil
+	case SequenceTypeC:
+		return SequenceTypeC, nil
+	case SequenceTypeAuto, SequenceType(""):
+		return SequenceTypeAuto, nil
+	default:
+		return "", ErrInvalidSequenceType
+	}
+}
 
 type MutagenesisType string
 
 const (
-	MutagenesisTypeRandom MutagenesisType = "random"
-	MutagenesisTypeCodon  MutagenesisType = "codon"
+	MutagenesisTypeRandom     MutagenesisType = "random"
+	MutagenesisTypeCodon      MutagenesisType = "codon"
+	ErrInvalidMutagenesisType                 = Error("invalid mutagenesis type")
 )
+
+// StringToMutagenesisType converts a string to a MutagenesisType.
+func StringToMutagenesisType(s string) (MutagenesisType, error) {
+	switch MutagenesisType(s) {
+	case MutagenesisTypeRandom, MutagenesisType(""):
+		return MutagenesisTypeRandom, nil
+	case MutagenesisTypeCodon:
+		return MutagenesisTypeCodon, nil
+	default:
+		return "", ErrInvalidMutagenesisType
+	}
+}
 
 type Experiment struct {
 	ExperimentID                   string

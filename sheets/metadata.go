@@ -26,6 +26,8 @@
 
 package sheets
 
+import "github.com/wtsi-hgi/dimsum-automation/types"
+
 const (
 	ErrNoData            = Error("no data found in sheet")
 	ErrMissingLibrary    = Error("experiment's library not found in libraries sheet")
@@ -36,7 +38,7 @@ const (
 // sheet with the given id and extracts metadata for columns relevant to DimSum,
 // returning a slice of Library that each contain a slice of their Experiments,
 // that each contain a slice of their Samples.
-func (s *Sheets) DimSumMetaData(sheetID string) (Libraries, error) {
+func (s *Sheets) DimSumMetaData(sheetID string) (types.Libraries, error) {
 	libs, libLookup, err := s.getLibraryMetaData(sheetID)
 	if err != nil {
 		return nil, err
@@ -55,7 +57,7 @@ func (s *Sheets) DimSumMetaData(sheetID string) (Libraries, error) {
 	return libs, nil
 }
 
-func (s *Sheets) getLibraryMetaData(sheetID string) (Libraries, map[string]int, error) { //nolint:funlen
+func (s *Sheets) getLibraryMetaData(sheetID string) (types.Libraries, map[string]int, error) { //nolint:funlen
 	sheet, err := s.Read(sheetID, "libraries")
 	if err != nil {
 		return nil, nil, err
@@ -74,13 +76,13 @@ func (s *Sheets) getLibraryMetaData(sheetID string) (Libraries, map[string]int, 
 		return nil, nil, err
 	}
 
-	libs := make(Libraries, len(libRows))
+	libs := make(types.Libraries, len(libRows))
 	lookup := make(map[string]int, len(libRows))
 
 	c := converter{}
 
 	for i, row := range libRows {
-		libs[i] = &Library{
+		libs[i] = &types.Library{
 			LibraryID:        row[0],
 			WildtypeSequence: row[1],
 			MaxSubstitutions: c.ToInt(row[2]),
@@ -93,8 +95,8 @@ func (s *Sheets) getLibraryMetaData(sheetID string) (Libraries, map[string]int, 
 }
 
 func (s *Sheets) getExperimentMetaData( //nolint:gocognit,gocyclo,funlen
-	sheetID string, libs Libraries, libLookup map[string]int,
-) ([]*Experiment, map[string]int, error) {
+	sheetID string, libs types.Libraries, libLookup map[string]int,
+) ([]*types.Experiment, map[string]int, error) {
 	sheet, err := s.Read(sheetID, "experiments")
 	if err != nil {
 		return nil, nil, err
@@ -156,7 +158,7 @@ func (s *Sheets) getExperimentMetaData( //nolint:gocognit,gocyclo,funlen
 		return nil, nil, err
 	}
 
-	exps := make([]*Experiment, len(expRows))
+	exps := make([]*types.Experiment, len(expRows))
 	lookup := make(map[string]int, len(expRows))
 
 	c := converter{}
@@ -179,7 +181,7 @@ func (s *Sheets) getExperimentMetaData( //nolint:gocognit,gocyclo,funlen
 			ms = c.ToInt(row[30])
 		}
 
-		exps[i] = &Experiment{
+		exps[i] = &types.Experiment{
 			ExperimentID:                   row[1],
 			Assay:                          row[2],
 			ProjectName:                    row[3],
@@ -234,7 +236,8 @@ func (s *Sheets) getExperimentMetaData( //nolint:gocognit,gocyclo,funlen
 	return exps, lookup, c.Err
 }
 
-func (s *Sheets) getSampleMetaData(sheetID string, exps []*Experiment, expLookup map[string]int) error { //nolint:funlen
+func (s *Sheets) getSampleMetaData( //nolint:funlen
+	sheetID string, exps []*types.Experiment, expLookup map[string]int) error {
 	sheet, err := s.Read(sheetID, "samples")
 	if err != nil {
 		return err
@@ -256,7 +259,7 @@ func (s *Sheets) getSampleMetaData(sheetID string, exps []*Experiment, expLookup
 		return err
 	}
 
-	samples := make([]*Sample, len(sampleRows))
+	samples := make([]*types.Sample, len(sampleRows))
 
 	c := converter{}
 
@@ -266,13 +269,13 @@ func (s *Sheets) getSampleMetaData(sheetID string, exps []*Experiment, expLookup
 			return ErrMissingExperiment
 		}
 
-		samples[i] = &Sample{
+		samples[i] = &types.Sample{
 			SampleID:            row[1],
 			Selection:           c.ToSelection(row[2]),
 			ExperimentReplicate: c.ToInt(row[3]),
 			SelectionTime:       c.ToFloatString(row[4]),
 			CellDensity:         c.ToFloatString(row[5]),
-			cellDensityFloat:    c.ToFloat(row[5]),
+			CellDensityFloat:    c.ToFloat(row[5]),
 		}
 
 		exp := exps[expI]

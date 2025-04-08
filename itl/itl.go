@@ -31,7 +31,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wtsi-hgi/dimsum-automation/sheets"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 type Error string
@@ -93,7 +93,7 @@ type ITL struct {
 // You can use SampleNameRuns() to get the "sampleName:runID"s of the unignored
 // samples we will operate on. If none are returned, you won't need to do
 // anything, as all your desired fastq files already exist.
-func New(lib *sheets.Library, fastqDir string) (*ITL, error) {
+func New(lib *types.Library, fastqDir string) (*ITL, error) {
 	if lib.StudyID == "" {
 		return nil, ErrNoStudy
 	}
@@ -117,7 +117,7 @@ func New(lib *sheets.Library, fastqDir string) (*ITL, error) {
 
 // extractSampleRuns finds all the samples in the given Library to create
 // unique, validating that there's only one experiement.
-func extractSampleRuns(lib *sheets.Library) ([]sampleRun, error) {
+func extractSampleRuns(lib *types.Library) ([]sampleRun, error) {
 	if len(lib.Experiments) != 1 {
 		return nil, ErrMultipleExperiments
 	}

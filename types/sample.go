@@ -24,14 +24,18 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ******************************************************************************/
 
-package sheets
+package types
 
 import (
 	"fmt"
 	"math"
 )
 
-const generationsMin = 0.05
+const (
+	ErrInvalidSelection = Error("invalid selection")
+
+	generationsMin = 0.05
+)
 
 type Selection string
 
@@ -40,19 +44,28 @@ const (
 	SelectionOutput Selection = "output"
 )
 
+// StringToSelection converts a string to a Selection type.
+func StringToSelection(s string) (Selection, error) {
+	switch Selection(s) {
+	case SelectionInput:
+		return SelectionInput, nil
+	case SelectionOutput:
+		return SelectionOutput, nil
+	default:
+		return "", ErrInvalidSelection
+	}
+}
+
 type Sample struct {
+	MLWHSampleID        string
+	RunID               string
+	ManualQC            string
 	SampleID            string
 	Selection           Selection
 	ExperimentReplicate int
 	SelectionTime       string
 	CellDensity         string
-	cellDensityFloat    float32
-
-	// These are not found in the Google sheet, but can be populated from the
-	// MLWH database.
-	MLWHSampleID string
-	RunID        string
-	ManualQC     string
+	CellDensityFloat    float32
 }
 
 // Key returns a unique key for this sample, which is the SampleID and RunID
@@ -80,11 +93,11 @@ func (s *Sample) SelectionID() int {
 
 // SelectionReplicate converts the Selection to a replicate number.
 func (s *Sample) SelectionReplicate() string {
-	if s.Selection == SelectionInput {
-		return ""
+	if s.Selection == SelectionOutput {
+		return "1"
 	}
 
-	return "1"
+	return ""
 }
 
 // TODO: Pair1, Pair2, proper Generations() calc; probably these are dimsum pkg
@@ -93,12 +106,12 @@ func (s *Sample) SelectionReplicate() string {
 // Generations is the amount of times the cells have divided between input and
 // output, ie. log2(output cell density / input cell density).
 func (s *Sample) Generations() float32 {
-	if s.cellDensityFloat == 0 || s.Selection == SelectionInput {
+	if s.CellDensityFloat == 0 || s.Selection == SelectionInput {
 		return 0
 	}
 
 	// TODO: This is a bit of a hack, we should be using the input cell density
 	// from the corresponding input sample, not generationsMin
 
-	return float32(math.Log2(float64(s.cellDensityFloat / generationsMin)))
+	return float32(math.Log2(float64(s.CellDensityFloat / generationsMin)))
 }

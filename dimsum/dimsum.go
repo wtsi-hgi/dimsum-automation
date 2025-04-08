@@ -35,7 +35,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/wtsi-hgi/dimsum-automation/sheets"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 type Error string
@@ -75,19 +75,19 @@ const (
 )
 
 type Row struct {
-	sheets.Sample
+	types.Sample
 }
 
 type Rows []Row
 
 // ExperimentDesign represents a single experiment's metadata.
 type ExperimentDesign struct {
-	*sheets.Experiment
+	*types.Experiment
 	Rows
 }
 
 // NewExperimentDesign creates an experiment design from the Experiment.
-func NewExperimentDesign(exp *sheets.Experiment) (ExperimentDesign, error) {
+func NewExperimentDesign(exp *types.Experiment) (ExperimentDesign, error) {
 	// fastqBasenamePrefix := itl.FastqBasenamePrefix(sample.SampleID, sample.RunID)
 	// Pair1:           fastqBasenamePrefix + itl.FastqPair1Suffix,
 	// Pair2:           fastqBasenamePrefix + itl.FastqPair2Suffix,
@@ -193,7 +193,7 @@ func New(fastqDir string, ed ExperimentDesign) DimSum {
 // Key generates a unique key that includes our Experiment, the given sample
 // names and runIDs (sorted), and a condensed encoded representation of all our
 // other properties.
-func (d *DimSum) Key(samples []*sheets.Sample) string {
+func (d *DimSum) Key(samples []*types.Sample) string {
 	sampleInfo := make([]string, len(samples))
 
 	for i, sample := range samples {

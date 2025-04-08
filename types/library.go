@@ -24,7 +24,11 @@
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  ******************************************************************************/
 
-package sheets
+package types
+
+type Error string
+
+func (e Error) Error() string { return string(e) }
 
 const (
 	ErrNoSamplesRequested            = Error("no samples requested")
@@ -33,63 +37,56 @@ const (
 )
 
 type Library struct {
+	StudyID          string
+	StudyName        string
 	LibraryID        string
 	WildtypeSequence string
 	MaxSubstitutions int
 	Experiments      []*Experiment
-
-	// These are not found in the Google sheet, but can be populated from the
-	// MLWH database.
-	StudyID   string
-	StudyName string
 }
 
 type Libraries []*Library
 
-// NameRuns can be used to Subset Libraries. Both Name and Run must be set,
-// otherwise this NameRun gets ignored during Subset.
-type NameRun struct {
-	Name string
-	Run  string
-}
-
-// IsValid returns true if both Name and Run are set.
-func (nr NameRun) IsValid() bool {
-	return nr.Name != "" && nr.Run != ""
-}
-
-// Key returns a string that uniquely identifies the NameRun.
-func (nr NameRun) Key() string {
-	return nr.Name + "." + nr.Run
-}
-
 // Subset returns a new Library containing only the experiment with the desired
 // samples inside it. If the given samples belong to more than one experiment,
-// an error is returned. If the samples are not found, an error is returned.
-func (l Libraries) Subset(nrs ...NameRun) (*Library, error) { //nolint:gocognit,gocyclo,funlen
-	samples := make([]*Sample, 0, len(nrs))
+// an error is returned. If the samples are not found, an error is returned. The
+// given samples must have at least MLWHSampleName and RunID set, or they will
+// be ignored.
+func (l Libraries) Subset(desired []*Sample) (*Library, error) {
+	valid, err := getValidSamples(desired)
+	if err != nil {
+		return nil, err
+	}
 
-	desired := make(map[string]bool, len(nrs))
+	return l.findMatchingLibrary(valid)
+}
 
-	for _, nr := range nrs {
-		if !nr.IsValid() {
+// getValidSamples extracts valid samples from input and returns a map of their
+// keys.
+func getValidSamples(desired []*Sample) (map[string]bool, error) {
+	valid := make(map[string]bool, len(desired))
+
+	for _, s := range desired {
+		if s.SampleID == "" || s.RunID == "" {
 			continue
 		}
 
-		desired[nr.Key()] = true
+		valid[s.Key()] = true
 	}
 
-	if len(desired) == 0 {
+	if len(valid) == 0 {
 		return nil, ErrNoSamplesRequested
 	}
 
+	return valid, nil
+}
+
+// findMatchingLibrary searches for a library that contains all the desired
+// samples in one experiment.
+func (l Libraries) findMatchingLibrary(desired map[string]bool) (*Library, error) {
 	for _, lib := range l {
 		for _, exp := range lib.Experiments {
-			for _, sample := range exp.Samples {
-				if desired[sample.Key()] {
-					samples = append(samples, sample)
-				}
-			}
+			samples := findDesiredSamplesInExperiment(exp, desired)
 
 			if len(samples) == 0 {
 				continue
@@ -104,6 +101,20 @@ func (l Libraries) Subset(nrs ...NameRun) (*Library, error) { //nolint:gocognit,
 	}
 
 	return nil, ErrSamplesNotFound
+}
+
+// findDesiredSamplesInExperiment collects all samples in the experiment that
+// match the desired keys.
+func findDesiredSamplesInExperiment(exp *Experiment, desired map[string]bool) []*Sample {
+	var samples []*Sample
+
+	for _, sample := range exp.Samples {
+		if desired[sample.Key()] {
+			samples = append(samples, sample)
+		}
+	}
+
+	return samples
 }
 
 // Clone returns a new Library with the given experiment and samples inside it.

@@ -34,6 +34,7 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/mlwh"
 	"github.com/wtsi-hgi/dimsum-automation/samples"
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 const (
@@ -113,7 +114,7 @@ func getDBAndSheets(c *config.Config) (*mlwh.MLWH, *sheets.Sheets, error) {
 	return db, s, err
 }
 
-func sponsorLibs(c *config.Config, db *mlwh.MLWH, s *sheets.Sheets) (sheets.Libraries, error) {
+func sponsorLibs(c *config.Config, db *mlwh.MLWH, s *sheets.Sheets) (types.Libraries, error) {
 	client := samples.New(db, s, samples.ClientOptions{
 		SheetID:       c.SheetID,
 		CacheLifetime: cacheLifetime,

@@ -35,6 +35,7 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/config"
 	"github.com/wtsi-hgi/dimsum-automation/mlwh"
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 const (
@@ -76,9 +77,9 @@ func (m *mockMLWH) Close() error {
 	return nil
 }
 
-type mockSheets struct{ smeta sheets.Libraries }
+type mockSheets struct{ smeta types.Libraries }
 
-func (m *mockSheets) DimSumMetaData(sheetID string) (sheets.Libraries, error) {
+func (m *mockSheets) DimSumMetaData(sheetID string) (types.Libraries, error) {
 	return m.smeta, nil
 }
 
@@ -119,12 +120,12 @@ func TestSamplesMock(t *testing.T) {
 		mclient := &mockMLWH{msamples: msamples, queryTime: mlwhQueryTime}
 
 		exp := "exp"
-		lib := &sheets.Library{
+		lib := &types.Library{
 			LibraryID: "lib",
-			Experiments: []*sheets.Experiment{
+			Experiments: []*types.Experiment{
 				{
 					ExperimentID: exp,
-					Samples: []*sheets.Sample{
+					Samples: []*types.Sample{
 						{
 							SampleID:            "sample1",
 							ExperimentReplicate: 1,
@@ -146,7 +147,7 @@ func TestSamplesMock(t *testing.T) {
 			},
 		}
 
-		sclient := &mockSheets{smeta: []*sheets.Library{lib}}
+		sclient := &mockSheets{smeta: []*types.Library{lib}}
 
 		allowedAge := 2 * mlwhQueryTime
 		c := New(mclient, sclient, ClientOptions{
@@ -166,12 +167,12 @@ func TestSamplesMock(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(len(mergedLibs), ShouldEqual, 0)
 			mergedLib := mergedLibs[0]
-			So(mergedLib, ShouldResemble, &sheets.Library{
+			So(mergedLib, ShouldResemble, &types.Library{
 				LibraryID: "lib",
-				Experiments: []*sheets.Experiment{
+				Experiments: []*types.Experiment{
 					{
 						ExperimentID: exp,
-						Samples: []*sheets.Sample{
+						Samples: []*types.Sample{
 							{
 								SampleID:            "sample1",
 								ExperimentReplicate: 1,
@@ -217,12 +218,12 @@ func TestSamplesMock(t *testing.T) {
 					freshLibs, err := c.ForSponsor(sponsor)
 					So(err, ShouldBeNil)
 					So(len(freshLibs), ShouldEqual, 1)
-					So(freshLibs[0], ShouldResemble, &sheets.Library{
+					So(freshLibs[0], ShouldResemble, &types.Library{
 						LibraryID: "lib",
-						Experiments: []*sheets.Experiment{
+						Experiments: []*types.Experiment{
 							{
 								ExperimentID: exp,
-								Samples: []*sheets.Sample{
+								Samples: []*types.Sample{
 									{
 										SampleID:            "sample1",
 										ExperimentReplicate: 1,
@@ -253,10 +254,10 @@ func TestSamplesMock(t *testing.T) {
 			})
 
 			Convey("You can filter those for desired samples", func() {
-				subset, err := mergedLibs.Subset(
-					sheets.NameRun{Name: msamples[0].SampleName, Run: msamples[0].RunID},
-					sheets.NameRun{Name: msamples[2].SampleName, Run: msamples[2].RunID},
-				)
+				subset, err := mergedLibs.Subset([]*types.Sample{
+					{SampleID: msamples[0].SampleName, RunID: msamples[0].RunID},
+					{SampleID: msamples[2].SampleName, RunID: msamples[2].RunID},
+				})
 				So(err, ShouldBeNil)
 
 				samples := subset.Experiments[0].Samples
@@ -336,10 +337,10 @@ func TestSamplesReal(t *testing.T) {
 				first := exp.Samples[0]
 				last := exp.Samples[len(exp.Samples)-1]
 
-				subset, err := cachedLibs.Subset(
-					sheets.NameRun{Name: first.SampleID, Run: first.RunID},
-					sheets.NameRun{Name: last.SampleID, Run: last.RunID},
-				)
+				subset, err := cachedLibs.Subset([]*types.Sample{
+					{SampleID: first.SampleID, RunID: first.RunID},
+					{SampleID: last.SampleID, RunID: last.RunID},
+				})
 				So(err, ShouldBeNil)
 				So(len(subset.Experiments), ShouldEqual, 1)
 				So(len(subset.Experiments[0].Samples), ShouldBeGreaterThan, 0)
