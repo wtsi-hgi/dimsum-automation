@@ -37,29 +37,56 @@ type Library struct {
 	WildtypeSequence string
 	MaxSubstitutions int
 	Experiments      []*Experiment
+
+	// These are not found in the Google sheet, but can be populated from the
+	// MLWH database.
+	StudyID   string
+	StudyName string
 }
 
 type Libraries []*Library
 
+// NameRuns can be used to Subset Libraries. Both Name and Run must be set,
+// otherwise this NameRun gets ignored during Subset.
+type NameRun struct {
+	Name string
+	Run  string
+}
+
+// IsValid returns true if both Name and Run are set.
+func (nr NameRun) IsValid() bool {
+	return nr.Name != "" && nr.Run != ""
+}
+
+// Key returns a string that uniquely identifies the NameRun.
+func (nr NameRun) Key() string {
+	return nr.Name + "." + nr.Run
+}
+
 // Subset returns a new Library containing only the experiment with the desired
-// samples inside it. If the given sampleIDs belong to more than one experiment,
-// an error is returned. If the sampleIDs are not found, an error is returned.
-func (l Libraries) Subset(sampleIDs ...string) (*Library, error) { //nolint:gocognit,gocyclo,funlen
-	if len(sampleIDs) == 0 {
-		return nil, ErrNoSamplesRequested
+// samples inside it. If the given samples belong to more than one experiment,
+// an error is returned. If the samples are not found, an error is returned.
+func (l Libraries) Subset(nrs ...NameRun) (*Library, error) { //nolint:gocognit,gocyclo,funlen
+	samples := make([]*Sample, 0, len(nrs))
+
+	desired := make(map[string]bool, len(nrs))
+
+	for _, nr := range nrs {
+		if !nr.IsValid() {
+			continue
+		}
+
+		desired[nr.Key()] = true
 	}
 
-	samples := make([]*Sample, 0, len(sampleIDs))
-
-	desired := make(map[string]bool, len(sampleIDs))
-	for _, sampleID := range sampleIDs {
-		desired[sampleID] = true
+	if len(desired) == 0 {
+		return nil, ErrNoSamplesRequested
 	}
 
 	for _, lib := range l {
 		for _, exp := range lib.Experiments {
 			for _, sample := range exp.Samples {
-				if desired[sample.SampleID] {
+				if desired[sample.Key()] {
 					samples = append(samples, sample)
 				}
 			}
@@ -68,7 +95,7 @@ func (l Libraries) Subset(sampleIDs ...string) (*Library, error) { //nolint:goco
 				continue
 			}
 
-			if len(samples) != len(sampleIDs) {
+			if len(samples) != len(desired) {
 				return nil, ErrNotAllSamplesInSameExperiment
 			}
 

@@ -47,15 +47,27 @@ type Sample struct {
 	SelectionTime       string
 	CellDensity         string
 	cellDensityFloat    float32
+
+	// These are not found in the Google sheet, but can be populated from the
+	// MLWH database.
+	MLWHSampleID string
+	RunID        string
+	ManualQC     string
+}
+
+// Key returns a unique key for this sample, which is the SampleID and RunID
+// concatenated with a period.
+func (s *Sample) Key() string {
+	return s.SampleID + "." + s.RunID
 }
 
 // SampleName is the selection and replicate number, eg. "input1" or "output2".
-func (s Sample) SampleName() string {
+func (s *Sample) SampleName() string {
 	return fmt.Sprintf("%s%d", s.Selection, s.ExperimentReplicate)
 }
 
 // SelectionID returns 0 for input and 1 for output.
-func (s Sample) SelectionID() int {
+func (s *Sample) SelectionID() int {
 	switch s.Selection {
 	case SelectionInput:
 		return 0
@@ -66,16 +78,21 @@ func (s Sample) SelectionID() int {
 	}
 }
 
-// TechnicalReplicate is ???. TODO: Not yet implemented!
-func (s Sample) TechnicalReplicate() int {
-	return 0
+// SelectionReplicate converts the Selection to a replicate number.
+func (s *Sample) SelectionReplicate() string {
+	if s.Selection == SelectionInput {
+		return ""
+	}
+
+	return "1"
 }
 
-// TODO: Pair1, Pair2
+// TODO: Pair1, Pair2, proper Generations() calc; probably these are dimsum pkg
+// methods during experiment file creation when looking over a slice of samples
 
 // Generations is the amount of times the cells have divided between input and
 // output, ie. log2(output cell density / input cell density).
-func (s Sample) Generations() float32 {
+func (s *Sample) Generations() float32 {
 	if s.cellDensityFloat == 0 || s.Selection == SelectionInput {
 		return 0
 	}

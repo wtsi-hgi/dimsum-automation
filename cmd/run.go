@@ -35,7 +35,7 @@ import (
 	"github.com/wtsi-hgi/dimsum-automation/config"
 	"github.com/wtsi-hgi/dimsum-automation/dimsum"
 	"github.com/wtsi-hgi/dimsum-automation/itl"
-	"github.com/wtsi-hgi/dimsum-automation/samples"
+	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
 const (
@@ -103,7 +103,7 @@ If output files already exist in the output directory for a sample, the process
 will be skipped for that sample.
 `,
 	Run: func(_ *cobra.Command, nameRunStrs []string) {
-		desired := getDesiredSamples(nameRunStrs)
+		desired := subsetDesiredSamples(nameRunStrs)
 
 		err := validateOutputDir(itlOutput)
 		if err != nil {
@@ -188,7 +188,7 @@ func createDirIfNotExist(dir string, statErr error) error {
 	return os.MkdirAll(dir, dirPerm)
 }
 
-func getDesiredSamples(nameRunStrs []string) samples.Samples {
+func subsetDesiredSamples(nameRunStrs []string) *sheets.Library {
 	nameRuns := nameRunStrsToNameRuns(nameRunStrs)
 
 	c, err := config.FromEnv()
@@ -196,17 +196,17 @@ func getDesiredSamples(nameRunStrs []string) samples.Samples {
 		die(err)
 	}
 
-	db, s, _, err := getDBAndSheets(c)
+	db, s, err := getDBAndSheets(c)
 	if err != nil {
 		die(err)
 	}
 
-	ss, err := sponsorSamples(c, db, s)
+	libs, err := sponsorLibs(c, db, s)
 	if err != nil {
 		die(err)
 	}
 
-	filtered, err := ss.Filter(nameRuns)
+	filtered, err := libs.Subset(nameRuns...)
 	if err != nil {
 		die(err)
 	}
@@ -214,8 +214,8 @@ func getDesiredSamples(nameRunStrs []string) samples.Samples {
 	return filtered
 }
 
-func nameRunStrsToNameRuns(nameRunStrs []string) []samples.NameRun {
-	result := make([]samples.NameRun, 0, len(nameRunStrs))
+func nameRunStrsToNameRuns(nameRunStrs []string) []sheets.NameRun {
+	result := make([]sheets.NameRun, 0, len(nameRunStrs))
 	done := make(map[string]bool)
 
 	for _, nameRunStr := range nameRunStrs {
@@ -228,7 +228,7 @@ func nameRunStrsToNameRuns(nameRunStrs []string) []samples.NameRun {
 			dief("invalid sampleName:runID pair: %s", nameRunStr)
 		}
 
-		result = append(result, samples.NameRun{
+		result = append(result, sheets.NameRun{
 			Name: parts[0],
 			Run:  parts[1],
 		})
@@ -287,18 +287,14 @@ this command via wr without --cwd_matters. -o must therefore not be a sub
 directory of the current working directory, or the working directory itself.
 `,
 	Run: func(_ *cobra.Command, nameRunStrs []string) {
-		desired := getDesiredSamples(nameRunStrs)
+		lib := subsetDesiredSamples(nameRunStrs)
 
-		design, err := dimsum.NewExperimentDesign(desired)
+		design, err := dimsum.NewExperimentDesign(lib.Experiments[0])
 		if err != nil {
 			die(err)
 		}
 
-		d := dimsum.New(
-			dimsumFastqDir,
-			dimsumBarcodeIdentityPath,
-			design.LibraryMetaData(),
-		)
+		d := dimsum.New(dimsumFastqDir, design)
 
 		d.VSearchMinQual = dimsumVsearchMinQual
 		d.StartStage = dimsumStartStage
@@ -315,7 +311,7 @@ directory of the current working directory, or the working directory itself.
 			die(err)
 		}
 
-		uniqueDimsumOutputDir := dimsumUniqueOutputDir(d, dimsumOutput, desired)
+		uniqueDimsumOutputDir := dimsumUniqueOutputDir(d, dimsumOutput, lib.Experiments[0].Samples)
 
 		dir := "."
 
@@ -326,7 +322,7 @@ directory of the current working directory, or the working directory itself.
 
 		infof("created experiment design file: %s", experimentPath)
 
-		cmd, err := d.Command(design.LibraryMetaData())
+		cmd, err := d.Command(design)
 		if err != nil {
 			die(err)
 		}
@@ -342,7 +338,7 @@ directory of the current working directory, or the working directory itself.
 	},
 }
 
-func dimsumUniqueOutputDir(d dimsum.DimSum, outputDir string, desired samples.Samples) string {
+func dimsumUniqueOutputDir(d dimsum.DimSum, outputDir string, desired []*sheets.Sample) string {
 	uniqueDimsumOutputDir := filepath.Join(outputDir, d.Key(desired))
 
 	if _, err := os.Stat(uniqueDimsumOutputDir); err == nil {

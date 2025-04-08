@@ -33,124 +33,108 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/wtsi-hgi/dimsum-automation/mlwh"
-	"github.com/wtsi-hgi/dimsum-automation/samples"
 	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
 func TestDimsum(t *testing.T) {
-	Convey("Given library and sample info", t, func() {
-		exp := "exp"
+	Convey("Given library, experiement and sample info", t, func() {
 		sample1 := "sample1"
 		sample2 := "sample2"
 		run := "run"
 
-		libMeta := sheets.LibraryMetaData{
-			LibraryID:        "lib1",
-			ExperimentID:     exp,
-			Wt:               "wt",
-			Cutadapt5First:   "ACTG",
-			Cutadapt5Second:  "TCGA",
-			MaxSubstitutions: 3,
+		testSamples := []*sheets.Sample{
+			{
+				SampleID:            sample1,
+				MLWHSampleID:        sample1 + "_id",
+				RunID:               run,
+				Selection:           sheets.SelectionInput,
+				ExperimentReplicate: 1,
+				SelectionTime:       "0.5",
+				CellDensity:         "0.1",
+			},
+			{
+				SampleID:            sample2,
+				MLWHSampleID:        sample2 + "_id",
+				RunID:               run,
+				Selection:           sheets.SelectionOutput,
+				ExperimentReplicate: 2,
+				SelectionTime:       "0.6",
+				CellDensity:         "0.2",
+			},
 		}
 
-		testSamples := []samples.Sample{
-			{
-				Sample: mlwh.Sample{
-					SampleName: sample1,
-					SampleID:   sample1 + "_id",
-					RunID:      run,
-				},
-				MetaData: sheets.MetaData{
-					Selection:       0,
-					Replicate:       1,
-					Time:            0.5,
-					OD:              0.1,
-					LibraryMetaData: libMeta,
-				},
-			},
-			{
-				Sample: mlwh.Sample{
-					SampleName: sample2,
-					SampleID:   sample2 + "_id",
-					RunID:      run,
-				},
-				MetaData: sheets.MetaData{
-					Selection:       1,
-					Replicate:       2,
-					Time:            0.6,
-					OD:              0.2,
-					LibraryMetaData: libMeta,
-				},
-			},
+		exp := &sheets.Experiment{
+			ExperimentID:     "exp",
+			WildtypeSequence: "wt",
+			MaxSubstitutions: 3,
+			Cutadapt5First:   "ACTG",
+			Cutadapt5Second:  "TCGA",
+			Samples:          testSamples,
 		}
 
 		Convey("You can generate an experiment design file", func() {
 			dir := t.TempDir()
 
-			design, err := NewExperimentDesign(testSamples)
+			design, err := NewExperimentDesign(exp)
 			So(err, ShouldBeNil)
 			So(design, ShouldResemble, ExperimentDesign{
-				{
-					ID:              exp,
-					SampleName:      sample1,
-					Replicate:       1,
-					Selection:       0,
-					Pair1:           sample1 + "_id." + run + pair1FastqSuffix,
-					Pair2:           sample1 + "_id." + run + pair2FastqSuffix,
-					CellDensity:     0.1,
-					Generations:     float32(1),
-					SelectionTime:   0.5,
-					LibraryMetaData: libMeta,
-				},
-				{
-					ID:              exp,
-					SampleName:      sample2,
-					Replicate:       2,
-					Selection:       1,
-					Pair1:           sample2 + "_id." + run + pair1FastqSuffix,
-					Pair2:           sample2 + "_id." + run + pair2FastqSuffix,
-					CellDensity:     0.2,
-					Generations:     float32(2),
-					SelectionTime:   0.6,
-					LibraryMetaData: libMeta,
-				},
+				Experiment: exp,
+				// {
+				// 	ID:              exp,
+				// 	SampleName:      sample1,
+				// 	Replicate:       1,
+				// 	Selection:       0,
+				// 	Pair1:           sample1 + "_id." + run + pair1FastqSuffix,
+				// 	Pair2:           sample1 + "_id." + run + pair2FastqSuffix,
+				// 	CellDensity:     0.1,
+				// 	Generations:     float32(1),
+				// 	SelectionTime:   0.5,
+				// 	LibraryMetaData: libMeta,
+				// },
+				// {
+				// 	ID:              exp,
+				// 	SampleName:      sample2,
+				// 	Replicate:       2,
+				// 	Selection:       1,
+				// 	Pair1:           sample2 + "_id." + run + pair1FastqSuffix,
+				// 	Pair2:           sample2 + "_id." + run + pair2FastqSuffix,
+				// 	CellDensity:     0.2,
+				// 	Generations:     float32(2),
+				// 	SelectionTime:   0.6,
+				// 	LibraryMetaData: libMeta,
+				// },
 			})
-			So(design.ID(), ShouldEqual, exp)
+			So(design.ExperimentID, ShouldEqual, exp.ExperimentID)
 
 			designPath, err := design.Write(dir)
 			So(err, ShouldBeNil)
 			So(designPath, ShouldEqual,
-				filepath.Join(dir, experimentDesignPrefix+exp+experimentDesignSuffix))
+				filepath.Join(dir, experimentDesignPrefix+exp.ExperimentID+experimentDesignSuffix))
 
 			ts0 := testSamples[0]
-			ts0m := ts0.MetaData
 			ts1 := testSamples[1]
-			ts1m := ts1.MetaData
 
 			d, err := os.ReadFile(designPath)
 			So(err, ShouldBeNil)
 			So(string(d), ShouldEqual, fmt.Sprintf(
 				"sample_name\texperiment_replicate\tselection_id\tselection_replicate\ttechnical_replicate\t"+
 					"pair1\tpair2\tgenerations\tcell_density\tselection_time\n"+
-					"%s\t%d\t%d\t%s\t%d\t%s_id.run_1.fastq.gz\t%s_id.run_2.fastq.gz\t%d\t%.3f\t%.1f\n"+
-					"%s\t%d\t%d\t%s\t%d\t%s_id.run_1.fastq.gz\t%s_id.run_2.fastq.gz\t%d\t%.3f\t%.1f\n",
-				sample1, ts0m.Replicate, ts0m.Selection, "", 1, sample1, sample1, 1, ts0m.OD, ts0m.Time,
-				sample2, ts1m.Replicate, ts1m.Selection, "1", 1, sample2, sample2, 2, ts1m.OD, ts1m.Time,
+					"%s\t%d\t%d\t%s\t%d\t%s_id.run_1.fastq.gz\t%s_id.run_2.fastq.gz\t%d\t%s\t%s\n"+
+					"%s\t%d\t%d\t%s\t%d\t%s_id.run_1.fastq.gz\t%s_id.run_2.fastq.gz\t%d\t%s\t%s\n",
+				sample1, ts0.ExperimentReplicate, ts0.SelectionID(), ts0.SelectionReplicate(), 1, sample1, sample1, 1, ts0.CellDensity, ts0.SelectionTime,
+				sample2, ts1.ExperimentReplicate, ts1.SelectionID(), ts1.SelectionReplicate(), 1, sample2, sample2, 2, ts1.CellDensity, ts1.SelectionTime,
 			))
 
 			Convey("Then you can generate a dimsum command line", func() {
 				fastqDir := "/path/to/fastqs"
 				barcodeIdentityPath := "barcode_identity.txt"
 
-				So(design.LibraryMetaData(), ShouldResemble, libMeta)
-
-				dimsum := New(fastqDir, barcodeIdentityPath, libMeta)
+				dimsum := New(fastqDir, design)
 				So(dimsum, ShouldNotBeNil)
 
 				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/69b24c9009b4933a204a8d2aace78d566eb8b31b")
 
-				cmd, err := dimsum.Command(libMeta)
+				cmd, err := dimsum.Command(design)
 				So(err, ShouldBeNil)
 
 				So(cmd, ShouldEqual, fmt.Sprintf(
@@ -161,11 +145,10 @@ func TestDimsum(t *testing.T) {
 						"--mixedSubstitutions %s --experimentDesignPairDuplicates %s "+
 						"--barcodeIdentityPath %s",
 					DimSumExe, fastqDir, DefaultFastqExtension, "TRUE", filepath.Base(designPath),
-					libMeta.Cutadapt5First+cutAdaptRequired+"TCGA"+cutAdaptOptional,
-					libMeta.Cutadapt5Second+cutAdaptRequired+"CAGT"+cutAdaptOptional,
+					exp.Cutadapt5First, exp.Cutadapt5Second,
 					DefaultCutAdaptMinLength, DefaultCutAdaptErrorRate,
-					DefaultVsearchMinQual, outputSubdir, dimsumProjectPrefix+exp,
-					DefaultStartStage, libMeta.Wt, DefaultCores, DefaultFitnessMinInputCountAny,
+					DefaultVsearchMinQual, outputSubdir, dimsumProjectPrefix+exp.ExperimentID,
+					DefaultStartStage, exp.WildtypeSequence, DefaultCores, DefaultFitnessMinInputCountAny,
 					DefaultFitnessMinInputCountAll, 3,
 					DefaultMutagenesisType, "T", "F", "F", barcodeIdentityPath,
 				))
@@ -173,10 +156,10 @@ func TestDimsum(t *testing.T) {
 				_, err = os.Stat(outputSubdir)
 				So(err, ShouldBeNil)
 
-				dimsum = New(fastqDir, "", libMeta)
+				dimsum = New(fastqDir, design)
 				So(dimsum, ShouldNotBeNil)
 
-				cmd, err = dimsum.Command(libMeta)
+				cmd, err = dimsum.Command(design)
 				So(err, ShouldBeNil)
 				So(cmd, ShouldNotContainSubstring, "--barcodeIdentityPath")
 				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/631c90f196443c203f4eeea856da242fafcc1793")

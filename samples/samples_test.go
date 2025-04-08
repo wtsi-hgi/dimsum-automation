@@ -76,9 +76,9 @@ func (m *mockMLWH) Close() error {
 	return nil
 }
 
-type mockSheets struct{ smeta map[string]sheets.MetaData }
+type mockSheets struct{ smeta sheets.Libraries }
 
-func (m *mockSheets) DimSumMetaData(sheetID string) (map[string]sheets.MetaData, error) {
+func (m *mockSheets) DimSumMetaData(sheetID string) (sheets.Libraries, error) {
 	return m.smeta, nil
 }
 
@@ -117,16 +117,36 @@ func TestSamplesMock(t *testing.T) {
 		}
 		mlwhQueryTime := 100 * time.Millisecond
 		mclient := &mockMLWH{msamples: msamples, queryTime: mlwhQueryTime}
-		exp := "exp"
-		libMeta := sheets.LibraryMetaData{ExperimentID: exp}
 
-		smeta := map[string]sheets.MetaData{
-			"sample1": {Replicate: 1, LibraryMetaData: libMeta},
-			"sample3": {Replicate: 2, LibraryMetaData: libMeta},
-			"sample4": {Replicate: 3, LibraryMetaData: libMeta},
-			"sample5": {Replicate: 4, LibraryMetaData: libMeta},
+		exp := "exp"
+		lib := &sheets.Library{
+			LibraryID: "lib",
+			Experiments: []*sheets.Experiment{
+				{
+					ExperimentID: exp,
+					Samples: []*sheets.Sample{
+						{
+							SampleID:            "sample1",
+							ExperimentReplicate: 1,
+						},
+						{
+							SampleID:            "sample3",
+							ExperimentReplicate: 2,
+						},
+						{
+							SampleID:            "sample4",
+							ExperimentReplicate: 3,
+						},
+						{
+							SampleID:            "sample5",
+							ExperimentReplicate: 4,
+						},
+					},
+				},
+			},
 		}
-		sclient := &mockSheets{smeta: smeta}
+
+		sclient := &mockSheets{smeta: []*sheets.Library{lib}}
 
 		allowedAge := 2 * mlwhQueryTime
 		c := New(mclient, sclient, ClientOptions{
@@ -142,21 +162,34 @@ func TestSamplesMock(t *testing.T) {
 
 		Convey("You can get info about samples belonging to a given sponsor", func() {
 			start := time.Now()
-			samples, err := c.ForSponsor(sponsor)
+			mergedLibs, err := c.ForSponsor(sponsor)
 			So(err, ShouldBeNil)
-			So(len(samples), ShouldEqual, 3)
-			So(samples, ShouldResemble, Samples{
-				{
-					Sample:   msamples[0],
-					MetaData: smeta[msamples[0].SampleName],
-				},
-				{
-					Sample:   msamples[2],
-					MetaData: smeta[msamples[2].SampleName],
-				},
-				{
-					Sample:   msamples[3],
-					MetaData: smeta[msamples[3].SampleName],
+			So(len(mergedLibs), ShouldEqual, 0)
+			mergedLib := mergedLibs[0]
+			So(mergedLib, ShouldResemble, &sheets.Library{
+				LibraryID: "lib",
+				Experiments: []*sheets.Experiment{
+					{
+						ExperimentID: exp,
+						Samples: []*sheets.Sample{
+							{
+								SampleID:            "sample1",
+								ExperimentReplicate: 1,
+							},
+							{
+								SampleID:            "sample3",
+								ExperimentReplicate: 2,
+							},
+							{
+								SampleID:            "sample4",
+								ExperimentReplicate: 3,
+							},
+							{
+								SampleID:            "sample5",
+								ExperimentReplicate: 4,
+							},
+						},
+					},
 				},
 			})
 
@@ -169,9 +202,9 @@ func TestSamplesMock(t *testing.T) {
 				time.Sleep(mlwhQueryTime / 2)
 
 				start = time.Now()
-				cachedSamples, err := c.ForSponsor(sponsor)
+				cachedLibs, err := c.ForSponsor(sponsor)
 				So(err, ShouldBeNil)
-				So(cachedSamples, ShouldResemble, samples)
+				So(cachedLibs, ShouldResemble, mergedLibs)
 
 				So(time.Since(start), ShouldBeLessThan, mlwhQueryTime)
 				So(time.Since(createTime), ShouldBeLessThan, mlwhQueryTime)
@@ -181,13 +214,21 @@ func TestSamplesMock(t *testing.T) {
 					time.Sleep(allowedAge * 2)
 
 					start = time.Now()
-					freshSamples, err := c.ForSponsor(sponsor)
+					freshLibs, err := c.ForSponsor(sponsor)
 					So(err, ShouldBeNil)
-					So(len(freshSamples), ShouldEqual, 1)
-					So(freshSamples, ShouldResemble, Samples{
-						{
-							Sample:   msamples[0],
-							MetaData: smeta[msamples[0].SampleName],
+					So(len(freshLibs), ShouldEqual, 1)
+					So(freshLibs[0], ShouldResemble, &sheets.Library{
+						LibraryID: "lib",
+						Experiments: []*sheets.Experiment{
+							{
+								ExperimentID: exp,
+								Samples: []*sheets.Sample{
+									{
+										SampleID:            "sample1",
+										ExperimentReplicate: 1,
+									},
+								},
+							},
 						},
 					})
 
@@ -203,45 +244,27 @@ func TestSamplesMock(t *testing.T) {
 
 					So(c.Err(), ShouldEqual, errMock)
 
-					freshSamples, err := c.ForSponsor(sponsor)
+					freshLibs, err := c.ForSponsor(sponsor)
 					So(err, ShouldBeNil)
-					So(len(freshSamples), ShouldEqual, 3)
+					So(len(freshLibs), ShouldEqual, 3)
 					So(c.Err(), ShouldEqual, errMock)
 					So(c.LastPrefetchSuccess(), ShouldHappenBefore, createTime)
 				})
 			})
 
 			Convey("You can filter those for desired samples", func() {
-				subset, err := samples.Filter([]NameRun{
-					{Name: msamples[0].SampleName, Run: msamples[0].RunID},
-					{Name: msamples[2].SampleName, Run: msamples[2].RunID},
-				})
+				subset, err := mergedLibs.Subset(
+					sheets.NameRun{Name: msamples[0].SampleName, Run: msamples[0].RunID},
+					sheets.NameRun{Name: msamples[2].SampleName, Run: msamples[2].RunID},
+				)
 				So(err, ShouldBeNil)
-				So(len(subset), ShouldEqual, 2)
-				So(subset[0].SampleName, ShouldEqual, msamples[0].SampleName)
-				So(subset[0].RunID, ShouldEqual, msamples[0].RunID)
-				So(subset[1].SampleName, ShouldEqual, msamples[2].SampleName)
-				So(subset[1].RunID, ShouldEqual, msamples[2].RunID)
 
-				_, err = samples.Filter(nil)
-				So(err, ShouldEqual, ErrNoNameRun)
-
-				_, err = samples.Filter([]NameRun{{Name: "", Run: ""}})
-				So(err, ShouldEqual, ErrInvalidNameRun)
-
-				_, err = samples.Filter([]NameRun{
-					{Name: "1", Run: "1"},
-					{Name: "2", Run: "1"},
-					{Name: "3", Run: "1"},
-					{Name: "4", Run: "1"},
-				})
-				So(err, ShouldEqual, ErrNameRunsNotFound)
-
-				_, err = samples.Filter([]NameRun{
-					{Name: msamples[0].SampleName, Run: msamples[0].RunID},
-					{Name: "foo", Run: "bar"},
-				})
-				So(err, ShouldEqual, ErrNameRunsNotFound)
+				samples := subset.Experiments[0].Samples
+				So(len(samples), ShouldEqual, 2)
+				So(samples[0].SampleName, ShouldEqual, msamples[0].SampleName)
+				So(samples[0].RunID, ShouldEqual, msamples[0].RunID)
+				So(samples[1].SampleName, ShouldEqual, msamples[2].SampleName)
+				So(samples[1].RunID, ShouldEqual, msamples[2].RunID)
 			})
 		})
 	})
@@ -262,57 +285,68 @@ func TestSamplesReal(t *testing.T) {
 		sc, err := sheets.ServiceCredentialsFromConfig(c)
 		So(err, ShouldBeNil)
 
-		sheets, err := sheets.New(sc)
+		s, err := sheets.New(sc)
 		So(err, ShouldBeNil)
 
-		c := New(mlwh, sheets, ClientOptions{
+		c := New(mlwh, s, ClientOptions{
 			SheetID:       c.SheetID,
 			CacheLifetime: 1 * time.Minute,
 		})
 
 		Convey("You can get un-cached, un-prefetched info about samples belonging to a given sponsor", func() {
 			start := time.Now()
-			samples, err := c.ForSponsor(sponsor)
+			libs, err := c.ForSponsor(sponsor)
 			So(err, ShouldBeNil)
-			So(len(samples), ShouldBeGreaterThan, 0)
-			So(samples[0].SampleID, ShouldNotBeEmpty)
-			So(samples[0].SampleName, ShouldNotBeEmpty)
-			So(samples[0].RunID, ShouldNotBeEmpty)
-			So(samples[0].StudyID, ShouldNotBeEmpty)
-			So(samples[0].StudyName, ShouldNotBeEmpty)
-			So(samples[0].ManualQC, ShouldBeTrue)
-			So(samples[0].Replicate, ShouldBeGreaterThan, 0)
-			So(samples[0].OD, ShouldBeGreaterThan, 0)
-			So(samples[0].LibraryID, ShouldNotBeEmpty)
-			So(samples[0].ExperimentID, ShouldNotBeEmpty)
-			So(samples[0].Wt, ShouldNotBeEmpty)
-			So(samples[0].Cutadapt5First, ShouldNotBeEmpty)
-			So(samples[0].Cutadapt5Second, ShouldNotBeEmpty)
-			So(samples[0].MaxSubstitutions, ShouldBeGreaterThan, 0)
+			So(len(libs), ShouldBeGreaterThan, 0)
+
+			lib := libs[0]
+			So(lib.LibraryID, ShouldNotBeBlank)
+			So(lib.WildtypeSequence, ShouldNotBeBlank)
+			So(lib.MaxSubstitutions, ShouldBeGreaterThan, 0)
+			So(lib.StudyID, ShouldNotBeBlank)
+			So(lib.StudyName, ShouldNotBeBlank)
+			So(len(lib.Experiments), ShouldBeGreaterThan, 0)
+
+			exp := lib.Experiments[0]
+			So(exp.ExperimentID, ShouldNotBeBlank)
+			So(exp.WildtypeSequence, ShouldNotBeBlank)
+			So(exp.MaxSubstitutions, ShouldBeGreaterThan, 0)
+			So(exp.BarcodeIdentityPath, ShouldNotBeBlank)
+			So(exp.Cutadapt5First, ShouldNotBeBlank)
+			So(exp.Cutadapt5Second, ShouldNotBeBlank)
+			So(len(exp.Samples), ShouldBeGreaterThan, 0)
+
+			sample := exp.Samples[0]
+			So(sample.SampleID, ShouldNotBeBlank)
+			So(sample.SampleName, ShouldNotBeBlank)
+			So(sample.RunID, ShouldNotBeBlank)
+			So(sample.ManualQC, ShouldBeTrue)
+			So(sample.ExperimentReplicate, ShouldBeGreaterThan, 0)
+			So(sample.CellDensity, ShouldNotBeBlank)
+
 			So(time.Since(start), ShouldBeGreaterThan, 100*time.Millisecond)
 
 			Convey("Which is then cached and filterable", func() {
 				start = time.Now()
-				cachedSamples, err := c.ForSponsor(sponsor)
+				cachedLibs, err := c.ForSponsor(sponsor)
 				So(err, ShouldBeNil)
-				So(cachedSamples, ShouldResemble, samples)
+				So(cachedLibs, ShouldResemble, libs)
 				So(time.Since(start), ShouldBeLessThan, 100*time.Millisecond)
 
-				first := samples[0]
-				last := samples[len(samples)-1]
+				first := exp.Samples[0]
+				last := exp.Samples[len(exp.Samples)-1]
 
-				subset, err := cachedSamples.Filter([]NameRun{
-					{Name: first.SampleName, Run: first.RunID},
-					{Name: last.SampleName, Run: last.RunID},
-				})
+				subset, err := cachedLibs.Subset(
+					sheets.NameRun{Name: first.SampleID, Run: first.RunID},
+					sheets.NameRun{Name: last.SampleID, Run: last.RunID},
+				)
 				So(err, ShouldBeNil)
-				So(len(subset), ShouldEqual, len(samples))
-				So(subset[0].SampleName, ShouldEqual, first.SampleName)
-				So(subset[0].RunID, ShouldEqual, first.RunID)
+				So(len(subset.Experiments), ShouldEqual, 1)
+				So(len(subset.Experiments[0].Samples), ShouldBeGreaterThan, 0)
+				So(subset.Experiments[0].Samples[0].SampleID, ShouldEqual, first.SampleID)
 
-				if len(subset) > 1 {
-					So(subset[1].SampleName, ShouldEqual, last.SampleName)
-					So(subset[1].RunID, ShouldEqual, last.RunID)
+				if len(subset.Experiments[0].Samples) > 1 {
+					So(subset.Experiments[0].Samples[1].SampleID, ShouldEqual, last.SampleID)
 				}
 			})
 		})

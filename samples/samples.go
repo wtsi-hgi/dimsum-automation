@@ -54,14 +54,15 @@ type MLWHClient interface {
 }
 
 type SheetsClient interface {
-	// DimSumMetaData reads sheets "Libraries" and "Samples" from the sheet with
-	// the given id and merges the results for columns relevant to DimSum,
-	// returning a map where keys are sample_id.
-	DimSumMetaData(sheetID string) (map[string]sheets.MetaData, error)
+	// DimSumMetaData reads sheets "Libraries", "Experiments" and "Samples" from
+	// the sheet with the given id and extracts metadata for columns relevant to
+	// DimSum, returning a slice of Library that each contain a slice of their
+	// Experiments, that each contain a slice of their Samples.
+	DimSumMetaData(sheetID string) (sheets.Libraries, error)
 }
 
 type cache struct {
-	samples    map[string][]Sample
+	libs       map[string]sheets.Libraries
 	lastUpdate time.Time
 	lifetime   time.Duration
 	mu         sync.RWMutex
@@ -69,26 +70,26 @@ type cache struct {
 
 func newCache(lifetime time.Duration) *cache {
 	return &cache{
-		samples:  make(map[string][]Sample),
+		libs:     make(map[string]sheets.Libraries),
 		lifetime: lifetime,
 	}
 }
 
-func (c *cache) getData(sponsor string) (bool, []Sample) {
+func (c *cache) getData(sponsor string) (bool, sheets.Libraries) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 
 	cached := c.lastUpdate.Add(c.lifetime).After(time.Now())
-	data := c.samples[sponsor]
+	data := c.libs[sponsor]
 
 	return cached, data
 }
 
-func (c *cache) storeData(sponsor string, data []Sample) {
+func (c *cache) storeData(sponsor string, data sheets.Libraries) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
-	c.samples[sponsor] = data
+	c.libs[sponsor] = data
 	c.lastUpdate = time.Now()
 }
 
@@ -197,70 +198,15 @@ func (c *Client) LastPrefetchSuccess() time.Time {
 	return c.cache.lastUpdated()
 }
 
-// Sample represents a sample in the MLWH combined with metadata taken from
-// Google Sheets.
-type Sample struct {
-	mlwh.Sample
-	sheets.MetaData
-}
-
-// NameRun lets you specify a sample name and run id, for filtering Samples.
-type NameRun struct {
-	Name string
-	Run  string
-}
-
-// Samples is a slice of Sample, from which you can get a subset based on
-// NameRuns.
-type Samples []Sample
-
-// Filter returns a subset of the samples that match the given names and runs.
-// Returns an error if not all NameRuns are found in the samples, or no valid
-// NameRuns are provided.
-func (s Samples) Filter(nameRuns []NameRun) (Samples, error) {
-	nrMap := make(map[string]bool, len(nameRuns))
-
-	for _, nr := range nameRuns {
-		if nr.Name == "" || nr.Run == "" {
-			return nil, ErrInvalidNameRun
-		}
-
-		nrMap[nr.Name+"."+nr.Run] = true
-	}
-
-	if len(nrMap) == 0 {
-		return nil, ErrNoNameRun
-	}
-
-	if len(nrMap) > len(s) {
-		return nil, ErrNameRunsNotFound
-	}
-
-	result := make(Samples, 0, len(nrMap))
-
-	for _, sample := range s {
-		key := sample.SampleName + "." + sample.RunID
-		if nrMap[key] {
-			result = append(result, sample)
-			delete(nrMap, key)
-		}
-	}
-
-	if len(nrMap) != 0 {
-		return nil, ErrNameRunsNotFound
-	}
-
-	return result, nil
-}
-
-// ForSponsor returns all samples for the given sponsor where manual_qc is 1 and
-// where there is corresponding metadata in our google sheet. It caches database
-// queries, so results can be up to CacheLifetime old.
+// ForSponsor returns all libraries for the given sponsor that have experiements
+// that have samples where manual_qc is 1 and where there is corresponding
+// metadata in our google sheet. It caches database queries, so results can be
+// up to CacheLifetime old.
 //
 // If you have prefetching enabled, this always returns immediately with the
 // result of the last successful prefetch, which might have been longer than
 // CacheLifetime ago, if the last actual prefetch failed (see Err()).
-func (c *Client) ForSponsor(sponsor string) (Samples, error) {
+func (c *Client) ForSponsor(sponsor string) (sheets.Libraries, error) {
 	cached, result := c.cache.getData(sponsor)
 
 	c.stopMu.RLock()
@@ -281,56 +227,44 @@ func (c *Client) ForSponsor(sponsor string) (Samples, error) {
 	return result, nil
 }
 
-func (c *Client) freshForSponsorQuery(sponsor string) ([]Sample, error) {
+func (c *Client) freshForSponsorQuery(sponsor string) (sheets.Libraries, error) {
 	samples, err := c.mc.SamplesForSponsor(sponsor)
 	if err != nil {
 		return nil, err
 	}
 
-	metadata, err := c.sc.DimSumMetaData(c.sheetID)
+	libs, err := c.sc.DimSumMetaData(c.sheetID)
 	if err != nil {
 		return nil, err
 	}
 
-	result := make([]Sample, 0, len(metadata))
+	mlwhSampleLookup := make(map[string]int, len(samples))
 
-	for _, s := range samples {
-		meta, ok := metadata[s.SampleName]
-		if !ok {
-			continue
+	for i, s := range samples {
+		mlwhSampleLookup[s.SampleName] = i
+	}
+
+	// TODO: apply mlwh sample and study metadata to libs, remove any libs and
+	// experiments that don't have mlwh samples
+
+	for _, lib := range libs {
+		// goodExps := make([]*sheets.Experiment, 0, len(lib.Experiments))
+
+		for _, exp := range lib.Experiments {
+			// goodSamples := make([]*sheets.Sample, 0, len(exp.Samples))
+
+			for _, sample := range exp.Samples {
+				_, ok := mlwhSampleLookup[sample.SampleID]
+				if !ok {
+					continue
+				}
+
+				// mlwhSample := samples[i]
+			}
 		}
-
-		result = append(result, newSample(s, meta))
 	}
 
-	return result, nil
-}
-
-func newSample(s mlwh.Sample, meta sheets.MetaData) Sample {
-	return Sample{
-		Sample: mlwh.Sample{
-			SampleID:   s.SampleID,
-			SampleName: s.SampleName,
-			RunID:      s.RunID,
-			StudyID:    s.StudyID,
-			StudyName:  s.StudyName,
-			ManualQC:   s.ManualQC,
-		},
-		MetaData: sheets.MetaData{
-			Selection: meta.Selection,
-			Replicate: meta.Replicate,
-			Time:      meta.Time,
-			OD:        meta.OD,
-			LibraryMetaData: sheets.LibraryMetaData{
-				LibraryID:        meta.LibraryID,
-				ExperimentID:     meta.ExperimentID,
-				Wt:               meta.Wt,
-				Cutadapt5First:   meta.Cutadapt5First,
-				Cutadapt5Second:  meta.Cutadapt5Second,
-				MaxSubstitutions: meta.MaxSubstitutions,
-			},
-		},
-	}
+	return libs, nil
 }
 
 // Close closes database connections and stops prefetching.

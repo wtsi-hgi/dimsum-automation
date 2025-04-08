@@ -31,7 +31,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/wtsi-hgi/dimsum-automation/samples"
+	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
 type Error string
@@ -39,9 +39,9 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
-	ErrNoStudies        = Error("no samples with studies provided")
-	ErrMultipleStudies  = Error("samples from multiple studies")
-	ErrMissingFastqFile = Error("one fastq file for sample run already exists, but not the other")
+	ErrNoStudy             = Error("study not specified")
+	ErrMultipleExperiments = Error("samples from multiple experiments provided")
+	ErrMissingFastqFile    = Error("one fastq file for sample run already exists, but not the other")
 
 	tsvOutputDir   = "./tsv_output"
 	tsvOutputPath  = tsvOutputDir + "/metadata/samples.tsv"
@@ -79,8 +79,7 @@ type ITL struct {
 	fastqDir   string
 }
 
-// New creates a new ITL for the given samples, checking that all samples are
-// from the same study.
+// New creates a new ITL for the samples within the given library.
 //
 // Supply the final output directory for the fastq files you'll create by
 // running the GenerateSamplesTSVCommand() command, followed by
@@ -94,17 +93,12 @@ type ITL struct {
 // You can use SampleNameRuns() to get the "sampleName:runID"s of the unignored
 // samples we will operate on. If none are returned, you won't need to do
 // anything, as all your desired fastq files already exist.
-func New(inputSamples []samples.Sample, fastqDir string) (*ITL, error) {
-	if len(inputSamples) == 0 {
-		return nil, ErrNoStudies
+func New(lib *sheets.Library, fastqDir string) (*ITL, error) {
+	if lib.StudyID == "" {
+		return nil, ErrNoStudy
 	}
 
-	studyID := inputSamples[0].Sample.StudyID
-	if studyID == "" {
-		return nil, ErrNoStudies
-	}
-
-	sampleRuns, err := extractSampleRuns(inputSamples, studyID)
+	sampleRuns, err := extractSampleRuns(lib)
 	if err != nil {
 		return nil, err
 	}
@@ -115,27 +109,29 @@ func New(inputSamples []samples.Sample, fastqDir string) (*ITL, error) {
 	}
 
 	return &ITL{
-		studyID:    studyID,
+		studyID:    lib.StudyID,
 		sampleRuns: todo,
 		fastqDir:   fastqDir,
 	}, nil
 }
 
-// extractSampleRuns processes input samples to create unique sample runs,
-// validating that all samples belong to the given study ID.
-func extractSampleRuns(inputSamples []samples.Sample, studyID string) ([]sampleRun, error) {
+// extractSampleRuns finds all the samples in the given Library to create
+// unique, validating that there's only one experiement.
+func extractSampleRuns(lib *sheets.Library) ([]sampleRun, error) {
+	if len(lib.Experiments) != 1 {
+		return nil, ErrMultipleExperiments
+	}
+
+	inputSamples := lib.Experiments[0].Samples
+
 	sampleRunMap := make(map[string]sampleRun, len(inputSamples))
 	sampleRunOrder := make([]string, 0, len(inputSamples))
 
 	for _, sample := range inputSamples {
-		if sample.Sample.StudyID != studyID {
-			return nil, ErrMultipleStudies
-		}
-
-		key := sample.Sample.SampleID + "." + sample.Sample.RunID
+		key := sample.SampleID + "." + sample.RunID
 		sr := sampleRun{
-			sampleID: sample.Sample.SampleID,
-			runID:    sample.Sample.RunID,
+			sampleID: sample.SampleID,
+			runID:    sample.RunID,
 		}
 
 		if _, exists := sampleRunMap[key]; !exists {

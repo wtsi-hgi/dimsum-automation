@@ -33,8 +33,7 @@ import (
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
-	"github.com/wtsi-hgi/dimsum-automation/mlwh"
-	"github.com/wtsi-hgi/dimsum-automation/samples"
+	"github.com/wtsi-hgi/dimsum-automation/sheets"
 )
 
 func TestITL(t *testing.T) {
@@ -43,36 +42,38 @@ func TestITL(t *testing.T) {
 		t.Fatalf("Failed to get absolute path of testdata file: %v", err)
 	}
 
-	Convey("Given desired samples", t, func() {
+	Convey("Given desired samples in an experiement in a library", t, func() {
 		studyID := "study1"
 		runID1 := "run1"
 		runID2 := "run2"
 		sampleName1 := "sample1"
 		sampleName2 := "sample2"
 
-		testSamples := []samples.Sample{
+		testSamples := []*sheets.Sample{
 			{
-				Sample: mlwh.Sample{
-					StudyID:    studyID,
-					RunID:      runID1,
-					SampleName: sampleName1,
-					SampleID:   sampleName1 + "_id",
-				},
+				RunID:        runID1,
+				SampleID:     sampleName1,
+				MLWHSampleID: sampleName1 + "_id",
 			},
 			{
-				Sample: mlwh.Sample{
-					StudyID:    studyID,
-					RunID:      runID2,
-					SampleName: sampleName1,
-					SampleID:   sampleName1 + "_id",
-				},
+				RunID:        runID2,
+				SampleID:     sampleName1,
+				MLWHSampleID: sampleName1 + "_id",
 			},
 			{
-				Sample: mlwh.Sample{
-					StudyID:    studyID,
-					RunID:      runID1,
-					SampleName: sampleName2,
-					SampleID:   sampleName2 + "_id",
+				RunID:        runID1,
+				SampleID:     sampleName2,
+				MLWHSampleID: sampleName2 + "_id",
+			},
+		}
+
+		testLib := &sheets.Library{
+			LibraryID: "lib",
+			StudyID:   studyID,
+			Experiments: []*sheets.Experiment{
+				{
+					ExperimentID: "exp",
+					Samples:      testSamples,
 				},
 			},
 		}
@@ -83,7 +84,7 @@ func TestITL(t *testing.T) {
 
 			finalDir := t.TempDir()
 
-			itl, err := New(testSamples, finalDir)
+			itl, err := New(testLib, finalDir)
 			So(err, ShouldBeNil)
 			So(itl, ShouldNotBeNil)
 			So(itl.studyID, ShouldEqual, studyID)
@@ -177,14 +178,14 @@ func TestITL(t *testing.T) {
 			err := os.WriteFile(fastq1, []byte("done"), userPerm)
 			So(err, ShouldBeNil)
 
-			_, err = New(testSamples, finalDir)
+			_, err = New(testLib, finalDir)
 			So(err, ShouldNotBeNil)
 
 			fastq2 := filepath.Join(finalDir, doneSR+FastqPair2Suffix)
 			err = os.WriteFile(fastq2, []byte("done"), userPerm)
 			So(err, ShouldBeNil)
 
-			itl, err := New(testSamples, finalDir)
+			itl, err := New(testLib, finalDir)
 			So(err, ShouldBeNil)
 			So(itl, ShouldNotBeNil)
 			So(itl.studyID, ShouldEqual, studyID)
@@ -202,17 +203,20 @@ func TestITL(t *testing.T) {
 			So(fcs, ShouldHaveLength, len(testSamples)-1)
 		})
 
-		Convey("You can't make a new ITL with samples from multiple studies, or no studies", func() {
-			testSamples[0].Sample.StudyID = "study2"
+		Convey("You can't make a new ITL with multiple or no experiments", func() {
 			dir := t.TempDir()
 
-			itl, err := New(testSamples, dir)
+			testLib.Experiments = append(testLib.Experiments, &sheets.Experiment{
+				ExperimentID: "exp2",
+			})
+
+			itl, err := New(testLib, dir)
 			So(err, ShouldNotBeNil)
 			So(itl, ShouldBeNil)
 
-			testSamples[0].Sample.StudyID = ""
+			testLib.Experiments = nil
 
-			_, err = New([]samples.Sample{testSamples[0]}, dir)
+			_, err = New(testLib, dir)
 			So(err, ShouldNotBeNil)
 
 			_, err = New(nil, dir)

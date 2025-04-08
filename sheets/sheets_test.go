@@ -164,7 +164,10 @@ func TestSheets(t *testing.T) {
 			So(len(libs[0].Experiments), ShouldBeGreaterThan, 0)
 			So(len(libs[0].Experiments[0].Samples), ShouldBeGreaterThan, 0)
 
-			lib, err := libs.Subset("AM762abstart1", "AM762abstart5")
+			lib, err := libs.Subset(
+				NameRun{Name: "AM762abstart1", Run: "?"},
+				NameRun{Name: "AM762abstart5", Run: "?"},
+			)
 			So(err, ShouldBeNil)
 			So(lib.LibraryID, ShouldEqual, "762")
 			So(lib.WildtypeSequence, ShouldEqual, "AAGGTCATGGAAATAAAGCTGATCAAGGGCCCAAAAGGACTTGGGTTCTCTATCGCAGGCGGAGTTGGCAACCAGCATATCCCCGGGGATAACTCAATCTACGTAACCAAAATTATCGAAGGCGGGGCAGCTCATAAGGATGGTCGACTT") //nolint:lll
@@ -200,10 +203,16 @@ func TestSheets(t *testing.T) {
 			So(s2.SelectionTime, ShouldEqual, "34.5")
 			So(s2.CellDensity, ShouldEqual, "1.27")
 
-			_, err = libs.Subset("AM762abstart1", "AM762808start2")
+			_, err = libs.Subset(
+				NameRun{Name: "AM762abstart1", Run: "?"},
+				NameRun{Name: "AM762808start2", Run: "?"},
+			)
 			So(err, ShouldNotBeNil)
 
-			_, err = libs.Subset("foo")
+			_, err = libs.Subset(NameRun{Name: "AM762abstart1"})
+			So(err, ShouldNotBeNil)
+
+			_, err = libs.Subset(NameRun{Name: "foo", Run: "bar"})
 			So(err, ShouldNotBeNil)
 		})
 	})
