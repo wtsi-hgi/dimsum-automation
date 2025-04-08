@@ -166,8 +166,8 @@ func TestSheets(t *testing.T) {
 			So(len(libs[0].Experiments[0].Samples), ShouldBeGreaterThan, 0)
 
 			lib, err := libs.Subset([]*types.Sample{
-				{SampleID: "AM762abstart1", RunID: "?"},
-				{SampleID: "AM762abstart5", RunID: "?"},
+				{SampleName: "AM762abstart1", RunID: "?"},
+				{SampleName: "AM762abstart5", RunID: "?"},
 			})
 			So(err, ShouldBeNil)
 			So(lib.LibraryID, ShouldEqual, "762")
@@ -191,29 +191,29 @@ func TestSheets(t *testing.T) {
 			So(len(exp.Samples), ShouldEqual, 2)
 
 			s1 := exp.Samples[0]
-			So(s1.SampleID, ShouldEqual, "AM762abstart1")
+			So(s1.SampleName, ShouldEqual, "AM762abstart1")
 			So(s1.Selection, ShouldEqual, types.SelectionInput)
 			So(s1.ExperimentReplicate, ShouldEqual, 1)
 			So(s1.SelectionTime, ShouldEqual, "")
 			So(s1.CellDensity, ShouldEqual, "0.05")
 
 			s2 := exp.Samples[1]
-			So(s2.SampleID, ShouldEqual, "AM762abstart5")
+			So(s2.SampleName, ShouldEqual, "AM762abstart5")
 			So(s2.Selection, ShouldEqual, types.SelectionOutput)
 			So(s2.ExperimentReplicate, ShouldEqual, 2)
 			So(s2.SelectionTime, ShouldEqual, "34.5")
 			So(s2.CellDensity, ShouldEqual, "1.27")
 
 			_, err = libs.Subset([]*types.Sample{
-				{SampleID: "AM762abstart1", RunID: "?"},
-				{SampleID: "AM762808start2", RunID: "?"},
+				{SampleName: "AM762abstart1", RunID: "?"},
+				{SampleName: "AM762808start2", RunID: "?"},
 			})
 			So(err, ShouldNotBeNil)
 
-			_, err = libs.Subset([]*types.Sample{{SampleID: "AM762abstart1"}})
+			_, err = libs.Subset([]*types.Sample{{SampleName: "AM762abstart1"}})
 			So(err, ShouldNotBeNil)
 
-			_, err = libs.Subset([]*types.Sample{{SampleID: "foo", RunID: "bar"}})
+			_, err = libs.Subset([]*types.Sample{{SampleName: "foo", RunID: "bar"}})
 			So(err, ShouldNotBeNil)
 		})
 	})

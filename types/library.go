@@ -67,7 +67,7 @@ func getValidSamples(desired []*Sample) (map[string]bool, error) {
 	valid := make(map[string]bool, len(desired))
 
 	for _, s := range desired {
-		if s.SampleID == "" || s.RunID == "" {
+		if s.SampleName == "" || s.RunID == "" {
 			continue
 		}
 

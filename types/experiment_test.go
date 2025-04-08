@@ -36,10 +36,10 @@ func TestExperiment(t *testing.T) {
 	Convey("Clone lets you copy an Experiment with new Samples", t, func() {
 		samples := []*Sample{
 			{
-				SampleID: "sample1",
+				SampleName: "sample1",
 			},
 			{
-				SampleID: "sample2",
+				SampleName: "sample2",
 			},
 		}
 
@@ -49,13 +49,13 @@ func TestExperiment(t *testing.T) {
 		}
 		cloned := orig.Clone([]*Sample{
 			{
-				SampleID: "sample3",
+				SampleName: "sample3",
 			},
 		})
 
 		So(cloned.ExperimentID, ShouldEqual, "exp1")
 		So(cloned.Samples, ShouldHaveLength, 1)
-		So(cloned.Samples[0].SampleID, ShouldEqual, "sample3")
+		So(cloned.Samples[0].SampleName, ShouldEqual, "sample3")
 
 		cloned.ExperimentID = "exp2"
 

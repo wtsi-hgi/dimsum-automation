@@ -44,8 +44,8 @@ func TestDimsum(t *testing.T) {
 
 		testSamples := []*types.Sample{
 			{
-				SampleID:            sample1,
-				MLWHSampleID:        sample1 + "_id",
+				SampleName:          sample1,
+				SampleID:            sample1 + "_id",
 				RunID:               run,
 				Selection:           types.SelectionInput,
 				ExperimentReplicate: 1,
@@ -53,8 +53,8 @@ func TestDimsum(t *testing.T) {
 				CellDensity:         "0.1",
 			},
 			{
-				SampleID:            sample2,
-				MLWHSampleID:        sample2 + "_id",
+				SampleName:          sample2,
+				SampleID:            sample2 + "_id",
 				RunID:               run,
 				Selection:           types.SelectionOutput,
 				ExperimentReplicate: 2,

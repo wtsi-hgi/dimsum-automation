@@ -57,10 +57,10 @@ func StringToSelection(s string) (Selection, error) {
 }
 
 type Sample struct {
-	MLWHSampleID        string
+	SampleName          string
+	SampleID            string
 	RunID               string
 	ManualQC            string
-	SampleID            string
 	Selection           Selection
 	ExperimentReplicate int
 	SelectionTime       string
@@ -68,14 +68,15 @@ type Sample struct {
 	CellDensityFloat    float32
 }
 
-// Key returns a unique key for this sample, which is the SampleID and RunID
+// Key returns a unique key for this sample, which is the SampleName and RunID
 // concatenated with a period.
 func (s *Sample) Key() string {
-	return s.SampleID + "." + s.RunID
+	return s.SampleName + "." + s.RunID
 }
 
-// SampleName is the selection and replicate number, eg. "input1" or "output2".
-func (s *Sample) SampleName() string {
+// DimsumSampleName is the selection and replicate number, eg. "input1" or
+// "output2".
+func (s *Sample) DimsumSampleName() string {
 	return fmt.Sprintf("%s%d", s.Selection, s.ExperimentReplicate)
 }
 

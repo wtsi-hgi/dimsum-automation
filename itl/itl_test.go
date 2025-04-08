@@ -51,19 +51,19 @@ func TestITL(t *testing.T) {
 
 		testSamples := []*types.Sample{
 			{
-				RunID:        runID1,
-				SampleID:     sampleName1,
-				MLWHSampleID: sampleName1 + "_id",
+				RunID:      runID1,
+				SampleName: sampleName1,
+				SampleID:   sampleName1 + "_id",
 			},
 			{
-				RunID:        runID2,
-				SampleID:     sampleName1,
-				MLWHSampleID: sampleName1 + "_id",
+				RunID:      runID2,
+				SampleName: sampleName1,
+				SampleID:   sampleName1 + "_id",
 			},
 			{
-				RunID:        runID1,
-				SampleID:     sampleName2,
-				MLWHSampleID: sampleName2 + "_id",
+				RunID:      runID1,
+				SampleName: sampleName2,
+				SampleID:   sampleName2 + "_id",
 			},
 		}
 

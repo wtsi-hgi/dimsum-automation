@@ -37,11 +37,11 @@ func TestLibrary(t *testing.T) {
 		exps := []*Experiment{
 			{
 				ExperimentID: "exp1",
-				Samples:      []*Sample{{SampleID: "sample1"}},
+				Samples:      []*Sample{{SampleName: "sample1"}},
 			},
 			{
 				ExperimentID: "exp2",
-				Samples:      []*Sample{{SampleID: "sample2"}},
+				Samples:      []*Sample{{SampleName: "sample2"}},
 			},
 		}
 
@@ -49,13 +49,13 @@ func TestLibrary(t *testing.T) {
 			LibraryID:   "lib1",
 			Experiments: exps,
 		}
-		cloned := orig.Clone(&Experiment{ExperimentID: "exp3"}, []*Sample{{SampleID: "sample3"}})
+		cloned := orig.Clone(&Experiment{ExperimentID: "exp3"}, []*Sample{{SampleName: "sample3"}})
 
 		So(cloned.LibraryID, ShouldEqual, "lib1")
 		So(cloned.Experiments, ShouldHaveLength, 1)
 		So(cloned.Experiments[0].ExperimentID, ShouldEqual, "exp3")
 		So(cloned.Experiments[0].Samples, ShouldHaveLength, 1)
-		So(cloned.Experiments[0].Samples[0].SampleID, ShouldEqual, "sample3")
+		So(cloned.Experiments[0].Samples[0].SampleName, ShouldEqual, "sample3")
 
 		cloned.LibraryID = "lib2"
 
@@ -70,8 +70,8 @@ func TestLibrary(t *testing.T) {
 				{
 					ExperimentID: "exp1",
 					Samples: []*Sample{
-						{SampleID: "sample1", RunID: "run1"},
-						{SampleID: "sample2", RunID: "run1"},
+						{SampleName: "sample1", RunID: "run1"},
+						{SampleName: "sample2", RunID: "run1"},
 					},
 				},
 			},
@@ -84,15 +84,15 @@ func TestLibrary(t *testing.T) {
 				{
 					ExperimentID: "exp2",
 					Samples: []*Sample{
-						{SampleID: "sample3", RunID: "run2"},
-						{SampleID: "sample4", RunID: "run2"},
+						{SampleName: "sample3", RunID: "run2"},
+						{SampleName: "sample4", RunID: "run2"},
 					},
 				},
 				{
 					ExperimentID: "exp3",
 					Samples: []*Sample{
-						{SampleID: "sample5", RunID: "run3"},
-						{SampleID: "sample6", RunID: "run3"},
+						{SampleName: "sample5", RunID: "run3"},
+						{SampleName: "sample6", RunID: "run3"},
 					},
 				},
 			},
@@ -105,8 +105,8 @@ func TestLibrary(t *testing.T) {
 			So(err, ShouldEqual, ErrNoSamplesRequested)
 		})
 
-		Convey("Subset returns an error if samples lack SampleID or RunID", func() {
-			_, err := libraries.Subset([]*Sample{{SampleID: "sample1"}})
+		Convey("Subset returns an error if samples lack SampleName or RunID", func() {
+			_, err := libraries.Subset([]*Sample{{SampleName: "sample1"}})
 			So(err, ShouldEqual, ErrNoSamplesRequested)
 
 			_, err = libraries.Subset([]*Sample{{RunID: "run1"}})
@@ -114,22 +114,22 @@ func TestLibrary(t *testing.T) {
 		})
 
 		Convey("Subset returns an error if samples are not found", func() {
-			_, err := libraries.Subset([]*Sample{{SampleID: "nonexistent", RunID: "run1"}})
+			_, err := libraries.Subset([]*Sample{{SampleName: "nonexistent", RunID: "run1"}})
 			So(err, ShouldEqual, ErrSamplesNotFound)
 		})
 
 		Convey("Subset returns an error if samples are in different experiments", func() {
 			_, err := libraries.Subset([]*Sample{
-				{SampleID: "sample1", RunID: "run1"},
-				{SampleID: "sample3", RunID: "run2"},
+				{SampleName: "sample1", RunID: "run1"},
+				{SampleName: "sample3", RunID: "run2"},
 			})
 			So(err, ShouldEqual, ErrNotAllSamplesInSameExperiment)
 		})
 
 		Convey("Subset successfully returns a subset library with found samples", func() {
 			result, err := libraries.Subset([]*Sample{
-				{SampleID: "sample1", RunID: "run1"},
-				{SampleID: "sample2", RunID: "run1"},
+				{SampleName: "sample1", RunID: "run1"},
+				{SampleName: "sample2", RunID: "run1"},
 			})
 			So(err, ShouldBeNil)
 			So(result, ShouldNotBeNil)
@@ -142,16 +142,16 @@ func TestLibrary(t *testing.T) {
 
 		Convey("Subset works with a subset of samples in an experiment", func() {
 			result, err := libraries.Subset([]*Sample{
-				{SampleID: "sample1", RunID: "run1"},
+				{SampleName: "sample1", RunID: "run1"},
 			})
 			So(err, ShouldBeNil)
 			So(result.Experiments[0].Samples, ShouldHaveLength, 1)
-			So(result.Experiments[0].Samples[0].SampleID, ShouldEqual, "sample1")
+			So(result.Experiments[0].Samples[0].SampleName, ShouldEqual, "sample1")
 		})
 
 		Convey("Subset correctly handles the Sample.Key method for matching", func() {
 			samples := []*Sample{
-				{SampleID: "sample5", RunID: "run3"},
+				{SampleName: "sample5", RunID: "run3"},
 			}
 			result, err := libraries.Subset(samples)
 			So(err, ShouldBeNil)

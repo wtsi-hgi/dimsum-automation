@@ -254,7 +254,7 @@ func (c *Client) freshForSponsorQuery(sponsor string) (types.Libraries, error) {
 			// goodSamples := make([]*sheets.Sample, 0, len(exp.Samples))
 
 			for _, sample := range exp.Samples {
-				_, ok := mlwhSampleLookup[sample.SampleID]
+				_, ok := mlwhSampleLookup[sample.SampleName]
 				if !ok {
 					continue
 				}

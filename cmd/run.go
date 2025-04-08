@@ -229,8 +229,8 @@ func nameRunStrsToNameRuns(nameRunStrs []string) []*types.Sample {
 		}
 
 		result = append(result, &types.Sample{
-			SampleID: parts[0],
-			RunID:    parts[1],
+			SampleName: parts[0],
+			RunID:      parts[1],
 		})
 
 		done[nameRunStr] = true

@@ -127,19 +127,19 @@ func TestSamplesMock(t *testing.T) {
 					ExperimentID: exp,
 					Samples: []*types.Sample{
 						{
-							SampleID:            "sample1",
+							SampleName:          "sample1",
 							ExperimentReplicate: 1,
 						},
 						{
-							SampleID:            "sample3",
+							SampleName:          "sample3",
 							ExperimentReplicate: 2,
 						},
 						{
-							SampleID:            "sample4",
+							SampleName:          "sample4",
 							ExperimentReplicate: 3,
 						},
 						{
-							SampleID:            "sample5",
+							SampleName:          "sample5",
 							ExperimentReplicate: 4,
 						},
 					},
@@ -174,19 +174,19 @@ func TestSamplesMock(t *testing.T) {
 						ExperimentID: exp,
 						Samples: []*types.Sample{
 							{
-								SampleID:            "sample1",
+								SampleName:          "sample1",
 								ExperimentReplicate: 1,
 							},
 							{
-								SampleID:            "sample3",
+								SampleName:          "sample3",
 								ExperimentReplicate: 2,
 							},
 							{
-								SampleID:            "sample4",
+								SampleName:          "sample4",
 								ExperimentReplicate: 3,
 							},
 							{
-								SampleID:            "sample5",
+								SampleName:          "sample5",
 								ExperimentReplicate: 4,
 							},
 						},
@@ -225,7 +225,7 @@ func TestSamplesMock(t *testing.T) {
 								ExperimentID: exp,
 								Samples: []*types.Sample{
 									{
-										SampleID:            "sample1",
+										SampleName:          "sample1",
 										ExperimentReplicate: 1,
 									},
 								},
@@ -255,16 +255,16 @@ func TestSamplesMock(t *testing.T) {
 
 			Convey("You can filter those for desired samples", func() {
 				subset, err := mergedLibs.Subset([]*types.Sample{
-					{SampleID: msamples[0].SampleName, RunID: msamples[0].RunID},
-					{SampleID: msamples[2].SampleName, RunID: msamples[2].RunID},
+					{SampleName: msamples[0].SampleName, RunID: msamples[0].RunID},
+					{SampleName: msamples[2].SampleName, RunID: msamples[2].RunID},
 				})
 				So(err, ShouldBeNil)
 
 				samples := subset.Experiments[0].Samples
 				So(len(samples), ShouldEqual, 2)
-				So(samples[0].SampleName, ShouldEqual, msamples[0].SampleName)
+				So(samples[0].DimsumSampleName, ShouldEqual, msamples[0].SampleName)
 				So(samples[0].RunID, ShouldEqual, msamples[0].RunID)
-				So(samples[1].SampleName, ShouldEqual, msamples[2].SampleName)
+				So(samples[1].DimsumSampleName, ShouldEqual, msamples[2].SampleName)
 				So(samples[1].RunID, ShouldEqual, msamples[2].RunID)
 			})
 		})
@@ -318,8 +318,8 @@ func TestSamplesReal(t *testing.T) {
 			So(len(exp.Samples), ShouldBeGreaterThan, 0)
 
 			sample := exp.Samples[0]
-			So(sample.SampleID, ShouldNotBeBlank)
 			So(sample.SampleName, ShouldNotBeBlank)
+			So(sample.DimsumSampleName, ShouldNotBeBlank)
 			So(sample.RunID, ShouldNotBeBlank)
 			So(sample.ManualQC, ShouldBeTrue)
 			So(sample.ExperimentReplicate, ShouldBeGreaterThan, 0)
@@ -338,16 +338,16 @@ func TestSamplesReal(t *testing.T) {
 				last := exp.Samples[len(exp.Samples)-1]
 
 				subset, err := cachedLibs.Subset([]*types.Sample{
-					{SampleID: first.SampleID, RunID: first.RunID},
-					{SampleID: last.SampleID, RunID: last.RunID},
+					{SampleName: first.SampleName, RunID: first.RunID},
+					{SampleName: last.SampleName, RunID: last.RunID},
 				})
 				So(err, ShouldBeNil)
 				So(len(subset.Experiments), ShouldEqual, 1)
 				So(len(subset.Experiments[0].Samples), ShouldBeGreaterThan, 0)
-				So(subset.Experiments[0].Samples[0].SampleID, ShouldEqual, first.SampleID)
+				So(subset.Experiments[0].Samples[0].SampleName, ShouldEqual, first.SampleName)
 
 				if len(subset.Experiments[0].Samples) > 1 {
-					So(subset.Experiments[0].Samples[1].SampleID, ShouldEqual, last.SampleID)
+					So(subset.Experiments[0].Samples[1].SampleName, ShouldEqual, last.SampleName)
 				}
 			})
 		})

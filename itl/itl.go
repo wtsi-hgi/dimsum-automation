@@ -128,9 +128,9 @@ func extractSampleRuns(lib *types.Library) ([]sampleRun, error) {
 	sampleRunOrder := make([]string, 0, len(inputSamples))
 
 	for _, sample := range inputSamples {
-		key := sample.SampleID + "." + sample.RunID
+		key := sample.SampleName + "." + sample.RunID
 		sr := sampleRun{
-			sampleID: sample.SampleID,
+			sampleID: sample.SampleName,
 			runID:    sample.RunID,
 		}
 

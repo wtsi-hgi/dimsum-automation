@@ -88,7 +88,7 @@ type ExperimentDesign struct {
 
 // NewExperimentDesign creates an experiment design from the Experiment.
 func NewExperimentDesign(exp *types.Experiment) (ExperimentDesign, error) {
-	// fastqBasenamePrefix := itl.FastqBasenamePrefix(sample.SampleID, sample.RunID)
+	// fastqBasenamePrefix := itl.FastqBasenamePrefix(sample.SampleName, sample.RunID)
 	// Pair1:           fastqBasenamePrefix + itl.FastqPair1Suffix,
 	// Pair2:           fastqBasenamePrefix + itl.FastqPair2Suffix,
 	// Generations:     sample.Generations(),
@@ -117,7 +117,7 @@ func (ed ExperimentDesign) Write(dir string) (string, error) {
 
 	for _, row := range ed.Rows {
 		line := fmt.Sprintf("%s\t%d\t%d\t%s\t%d\t%s\t%s\t%.0f\t%s\t%s\n",
-			row.SampleName(), row.ExperimentReplicate, row.SelectionID(), row.SelectionReplicate(), 1, //TODO: technical replicate
+			row.DimsumSampleName(), row.ExperimentReplicate, row.SelectionID(), row.SelectionReplicate(), 1, //TODO: technical replicate
 			"TODO: Pair1", "TODO: Pair2", row.Generations(), row.CellDensity, row.SelectionTime)
 
 		if _, err = file.WriteString(line); err != nil {
@@ -197,7 +197,7 @@ func (d *DimSum) Key(samples []*types.Sample) string {
 	sampleInfo := make([]string, len(samples))
 
 	for i, sample := range samples {
-		sampleInfo[i] = fmt.Sprintf("%s.%s", sample.SampleID, sample.RunID)
+		sampleInfo[i] = fmt.Sprintf("%s.%s", sample.SampleName, sample.RunID)
 	}
 
 	sort.Strings(sampleInfo)

@@ -35,24 +35,24 @@ import (
 func TestSample(t *testing.T) {
 	Convey("Key combines sample Name and RunID", t, func() {
 		s := &Sample{
-			SampleID: "sample",
-			RunID:    "run",
+			SampleName: "sample",
+			RunID:      "run",
 		}
 		So(s.Key(), ShouldEqual, "sample.run")
 	})
 
-	Convey("SampleName() combines selection and experiment replicate", t, func() {
+	Convey("DimsumSampleName() combines selection and experiment replicate", t, func() {
 		s := &Sample{
 			Selection:           SelectionInput,
 			ExperimentReplicate: 1,
 		}
-		So(s.SampleName(), ShouldEqual, "input1")
+		So(s.DimsumSampleName(), ShouldEqual, "input1")
 
 		s = &Sample{
 			Selection:           SelectionOutput,
 			ExperimentReplicate: 2,
 		}
-		So(s.SampleName(), ShouldEqual, "output2")
+		So(s.DimsumSampleName(), ShouldEqual, "output2")
 	})
 
 	Convey("SelectionID() returns 0 for input and 1 for output", t, func() {

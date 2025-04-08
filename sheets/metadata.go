@@ -270,7 +270,7 @@ func (s *Sheets) getSampleMetaData( //nolint:funlen
 		}
 
 		samples[i] = &types.Sample{
-			SampleID:            row[1],
+			SampleName:          row[1],
 			Selection:           c.ToSelection(row[2]),
 			ExperimentReplicate: c.ToInt(row[3]),
 			SelectionTime:       c.ToFloatString(row[4]),
