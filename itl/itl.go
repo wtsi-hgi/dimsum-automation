@@ -129,15 +129,9 @@ func extractSamples(lib *types.Library) ([]*Sample, error) {
 
 	for _, input := range inputSamples {
 		key := input.Key()
-		s := &Sample{
-			Sample: types.Sample{
-				SampleID: input.SampleID,
-				RunID:    input.RunID,
-			},
-		}
 
 		if _, exists := sampleMap[key]; !exists {
-			sampleMap[key] = s
+			sampleMap[key] = &Sample{Sample: types.Sample{SampleID: input.SampleID, RunID: input.RunID}}
 
 			sampleOrder = append(sampleOrder, key)
 		}
