@@ -100,4 +100,16 @@ func TestSample(t *testing.T) {
 	})
 
 	// TODO: Generations() testable here?
+
+	Convey("Clone lets you copy a Sample", t, func() {
+		orig := &Sample{
+			SampleName: "sample1",
+		}
+		cloned := orig.Clone()
+
+		So(cloned.SampleName, ShouldEqual, "sample1")
+		cloned.SampleName = "sample2"
+
+		So(orig.SampleName, ShouldEqual, "sample1")
+	})
 }

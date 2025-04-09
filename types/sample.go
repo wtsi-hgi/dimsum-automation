@@ -63,6 +63,7 @@ type Sample struct {
 	ManualQC            string
 	Selection           Selection
 	ExperimentReplicate int
+	TechnicalReplicate  int
 	SelectionTime       string
 	CellDensity         string
 	CellDensityFloat    float32
@@ -115,4 +116,11 @@ func (s *Sample) Generations() float32 {
 	// from the corresponding input sample, not generationsMin
 
 	return float32(math.Log2(float64(s.CellDensityFloat / generationsMin)))
+}
+
+// Clone returns a new Sample with the same values as the original.
+func (s *Sample) Clone() *Sample {
+	newS := *s
+
+	return &newS
 }
