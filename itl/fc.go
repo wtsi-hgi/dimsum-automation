@@ -31,6 +31,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
 const (
@@ -45,14 +47,14 @@ const (
 
 // FastqCreator holds the information needed to create fastq files for a sample.
 type FastqCreator struct {
-	sampleRun sampleRun
-	tsvPath   string
-	finalDir  string
+	sample   *Sample
+	tsvPath  string
+	finalDir string
 }
 
-// IDRun returns the "sampleID.runID" for this sample.
+// IDRun returns the "SampleID.RunID" for this sample.
 func (fc *FastqCreator) IDRun() string {
-	return fc.sampleRun.Key()
+	return fc.sample.Key()
 }
 
 // Command returns a command line for irods_to_lustre that will use our TSV file
@@ -70,12 +72,12 @@ func (fc *FastqCreator) Command() string {
 }
 
 func (fc *FastqCreator) outputPathPrefix() string {
-	return filepath.Join(".", fc.sampleRun.Key())
+	return filepath.Join(".", fc.sample.Key())
 }
 
 // MoveFastqFiles moves the pair 1 and 2 fastq files created by irods_to_lustre
-// to our final fastq directory, renaming them to be based on sampleRun instead
-// of just sampleID.
+// to our final fastq directory, renaming them to be based on SampleID and RunID
+// instead of just SampleID.
 //
 // If the destination files already exist and have the same size, nothing is
 // done. If they have different sizes, an error is returned.
@@ -83,8 +85,8 @@ func (fc *FastqCreator) MoveFastqFiles() error {
 	sourceDir := filepath.Join(fc.outputPathPrefix()+fastqOutputPathSuffix, fastqOutputSubDir)
 
 	for _, suffix := range []string{FastqPair1Suffix, FastqPair2Suffix} {
-		sourceFile := filepath.Join(sourceDir, fc.sampleRun.sampleID+suffix)
-		destFile := fc.sampleRun.FastqPath(fc.finalDir, suffix)
+		sourceFile := filepath.Join(sourceDir, fc.sample.SampleID+suffix)
+		destFile := fc.sample.FastqPath(fc.finalDir, suffix)
 
 		if err := moveFile(sourceFile, destFile); err != nil {
 			return err
@@ -95,10 +97,12 @@ func (fc *FastqCreator) MoveFastqFiles() error {
 }
 
 // FastqBasenamePrefix returns the prefix for the fastq files based on the
-// sample ID and run ID. Appending the suffixes FastqPair1Suffix and
+// SampleID and RunID. Appending the suffixes FastqPair1Suffix and
 // FastqPair2Suffix will give the full names of the fastq files.
 func FastqBasenamePrefix(sampleID, runID string) string {
-	return sampleRun{sampleID: sampleID, runID: runID}.Key()
+	ts := &types.Sample{SampleID: sampleID, RunID: runID}
+
+	return ts.Key()
 }
 
 // moveFile moves a file from src to dst. If the destination file already exists

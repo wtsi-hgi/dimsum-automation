@@ -55,28 +55,28 @@ const (
 	userPerm = 0700
 )
 
-type sampleRun struct {
-	sampleID string
-	runID    string
+// Sample is a types.Sample with extra methods.
+type Sample struct {
+	types.Sample
 }
 
-func (s sampleRun) Key() string {
-	return fmt.Sprintf("%s.%s", s.sampleID, s.runID)
+func (s *Sample) Key() string {
+	return fmt.Sprintf("%s.%s", s.SampleID, s.RunID)
 }
 
-func (s sampleRun) TSVPath() string {
+func (s *Sample) TSVPath() string {
 	return filepath.Join(".", s.Key()+tsvExtension)
 }
 
-func (s sampleRun) FastqPath(outputDir, pairSuffix string) string {
+func (s *Sample) FastqPath(outputDir, pairSuffix string) string {
 	return filepath.Join(outputDir, s.Key()+pairSuffix)
 }
 
 // ITL lets you use irods_to_lustre to get fastqs for certain samples.
 type ITL struct {
-	studyID    string
-	sampleRuns []sampleRun
-	fastqDir   string
+	studyID  string
+	samples  []*Sample
+	fastqDir string
 }
 
 // New creates a new ITL for the samples within the given library.
@@ -90,74 +90,76 @@ type ITL struct {
 // contains some but not all of the fastq files for a sample, an error will be
 // returned.
 //
-// You can use SampleNameRuns() to get the "sampleName:runID"s of the unignored
-// samples we will operate on. If none are returned, you won't need to do
-// anything, as all your desired fastq files already exist.
+// You can use Samples() to get the Samples of the unignored samples we will
+// operate on. If none are returned, you won't need to do anything, as all your
+// desired fastq files already exist.
 func New(lib *types.Library, fastqDir string) (*ITL, error) {
-	if lib.StudyID == "" {
+	if lib == nil || lib.StudyID == "" {
 		return nil, ErrNoStudy
 	}
 
-	sampleRuns, err := extractSampleRuns(lib)
+	samples, err := extractSamples(lib)
 	if err != nil {
 		return nil, err
 	}
 
-	todo, err := todoSampleRuns(sampleRuns, fastqDir)
+	todo, err := todoSamples(samples, fastqDir)
 	if err != nil {
 		return nil, err
 	}
 
 	return &ITL{
-		studyID:    lib.StudyID,
-		sampleRuns: todo,
-		fastqDir:   fastqDir,
+		studyID:  lib.StudyID,
+		samples:  todo,
+		fastqDir: fastqDir,
 	}, nil
 }
 
-// extractSampleRuns finds all the samples in the given Library to create
-// unique, validating that there's only one experiement.
-func extractSampleRuns(lib *types.Library) ([]sampleRun, error) {
+// extractSamples finds all the unique samples in the given Library, validating
+// that there's only one experiement.
+func extractSamples(lib *types.Library) ([]*Sample, error) {
 	if len(lib.Experiments) != 1 {
 		return nil, ErrMultipleExperiments
 	}
 
 	inputSamples := lib.Experiments[0].Samples
 
-	sampleRunMap := make(map[string]sampleRun, len(inputSamples))
-	sampleRunOrder := make([]string, 0, len(inputSamples))
+	sampleMap := make(map[string]*Sample, len(inputSamples))
+	sampleOrder := make([]string, 0, len(inputSamples))
 
-	for _, sample := range inputSamples {
-		key := sample.SampleName + "." + sample.RunID
-		sr := sampleRun{
-			sampleID: sample.SampleName,
-			runID:    sample.RunID,
+	for _, input := range inputSamples {
+		key := input.Key()
+		s := &Sample{
+			Sample: types.Sample{
+				SampleID: input.SampleID,
+				RunID:    input.RunID,
+			},
 		}
 
-		if _, exists := sampleRunMap[key]; !exists {
-			sampleRunMap[key] = sr
-			sampleRunOrder = append(sampleRunOrder, key)
+		if _, exists := sampleMap[key]; !exists {
+			sampleMap[key] = s
+
+			sampleOrder = append(sampleOrder, key)
 		}
 	}
 
-	sampleRuns := make([]sampleRun, len(sampleRunMap))
+	samples := make([]*Sample, len(sampleMap))
 
-	for i, key := range sampleRunOrder {
-		sampleRuns[i] = sampleRunMap[key]
+	for i, key := range sampleOrder {
+		samples[i] = sampleMap[key]
 	}
 
-	return sampleRuns, nil
+	return samples, nil
 }
 
-// todoSampleRuns checks if the fastq files for each sample run already exist
-// in the fastq directory. It returns a slice of sample runs that need to be
-// processed, or an error if any of the sample runs have only one fastq file
-// already present.
-func todoSampleRuns(sampleRuns []sampleRun, fastqDir string) ([]sampleRun, error) {
-	todo := make([]sampleRun, 0, len(sampleRuns))
+// todoSamples checks if the fastq files for each sample already exist in the
+// fastq directory. It returns a slice of samples that need to be processed, or
+// an error if any of the samples have only one fastq file already present.
+func todoSamples(inputs []*Sample, fastqDir string) ([]*Sample, error) {
+	todo := make([]*Sample, 0, len(inputs))
 
-	for _, sr := range sampleRuns {
-		found, err := checkFastqFiles(sr, fastqDir)
+	for _, input := range inputs {
+		found, err := checkFastqFiles(input, fastqDir)
 		if err != nil {
 			return nil, err
 		}
@@ -166,18 +168,18 @@ func todoSampleRuns(sampleRuns []sampleRun, fastqDir string) ([]sampleRun, error
 			continue
 		}
 
-		todo = append(todo, sr)
+		todo = append(todo, input)
 	}
 
 	return todo, nil
 }
 
-// checkFastqFiles checks if the fastq files for a sample run already exist in
-// the fastq directory. If they both do, returns true, or if none do, returns
-// false. If only one fastq file exists, it returns an error.
-func checkFastqFiles(sr sampleRun, fastqDir string) (bool, error) {
-	pair1 := sr.FastqPath(fastqDir, FastqPair1Suffix)
-	pair2 := sr.FastqPath(fastqDir, FastqPair2Suffix)
+// checkFastqFiles checks if the fastq files for a sample already exist in the
+// fastq directory. If they both do, returns true, or if none do, returns false.
+// If only one fastq file exists, it returns an error.
+func checkFastqFiles(input *Sample, fastqDir string) (bool, error) {
+	pair1 := input.FastqPath(fastqDir, FastqPair1Suffix)
+	pair2 := input.FastqPath(fastqDir, FastqPair2Suffix)
 
 	if fileExists(pair1) && fileExists(pair2) {
 		return true, nil
@@ -196,20 +198,13 @@ func fileExists(path string) bool {
 	return !os.IsNotExist(err)
 }
 
-// SampleNameRuns returns a slice of strings of the form "sampleName.runID" for
-// each sample run in the ITL.
+// Samples returns the samples run in the ITL.
 //
 // This is useful for checking which samples will be processed by the
 // GenerateSamplesTSVCommand() command, and which ones already exist in the
 // fastq directory.
-func (i *ITL) SampleNameRuns() []string {
-	sampleNameRuns := make([]string, len(i.sampleRuns))
-
-	for i, sr := range i.sampleRuns {
-		sampleNameRuns[i] = sr.Key()
-	}
-
-	return sampleNameRuns
+func (i *ITL) Samples() []*Sample {
+	return i.samples
 }
 
 // GenerateSamplesTSVCommand returns a command line for irods_to_lustre that
@@ -228,18 +223,18 @@ func (i *ITL) GenerateSamplesTSVCommand() (string, string) {
 // FilterSamplesTSV creates a TSV file for each sample run in the ITL and
 // returns a slice of FastqCreator.
 func (i *ITL) FilterSamplesTSV(inputTSVPath string) ([]FastqCreator, error) {
-	fcs := make([]FastqCreator, 0, len(i.sampleRuns))
+	fcs := make([]FastqCreator, 0, len(i.samples))
 
-	for _, sr := range i.sampleRuns {
-		tsvPath, err := createPerSampleRunTSV(inputTSVPath, sr)
+	for _, s := range i.samples {
+		tsvPath, err := createPerSampleRunTSV(inputTSVPath, s)
 		if err != nil {
 			return nil, err
 		}
 
 		fcs = append(fcs, FastqCreator{
-			sampleRun: sr,
-			tsvPath:   tsvPath,
-			finalDir:  i.fastqDir,
+			sample:   s,
+			tsvPath:  tsvPath,
+			finalDir: i.fastqDir,
 		})
 	}
 

@@ -35,7 +35,7 @@ const (
 	ErrNoSamplesFound = Error("no matching samples found in TSV file")
 )
 
-func createPerSampleRunTSV(inputTSVPath string, sr sampleRun) (string, error) {
+func createPerSampleRunTSV(inputTSVPath string, input *Sample) (string, error) {
 	data, err := os.ReadFile(inputTSVPath)
 	if err != nil {
 		return "", err
@@ -46,17 +46,17 @@ func createPerSampleRunTSV(inputTSVPath string, sr sampleRun) (string, error) {
 		return "", ErrNoSamplesFound
 	}
 
-	filteredLines, err := filterLinesForSampleRun(lines, sr)
+	filteredLines, err := filterLinesForSampleRun(lines, input)
 	if err != nil {
 		return "", err
 	}
 
-	outPath := sr.TSVPath()
+	outPath := input.TSVPath()
 
 	return outPath, writeFilteredTSV(outPath, filteredLines)
 }
 
-func filterLinesForSampleRun(lines []string, sr sampleRun) ([]string, error) {
+func filterLinesForSampleRun(lines []string, input *Sample) ([]string, error) {
 	if len(lines) == 0 {
 		return nil, ErrNoSamplesFound
 	}
@@ -64,7 +64,7 @@ func filterLinesForSampleRun(lines []string, sr sampleRun) ([]string, error) {
 	header := lines[0]
 	dataLines := lines[1:]
 
-	matchingLines := filterMatchingSampleRuns(dataLines, sr)
+	matchingLines := filterMatchingSampleRuns(dataLines, input)
 
 	if len(matchingLines) == 0 {
 		return nil, ErrNoSamplesFound
@@ -75,11 +75,11 @@ func filterLinesForSampleRun(lines []string, sr sampleRun) ([]string, error) {
 	return result, nil
 }
 
-func filterMatchingSampleRuns(lines []string, sr sampleRun) []string {
+func filterMatchingSampleRuns(lines []string, input *Sample) []string {
 	var matchingLines []string
 
 	for _, line := range lines {
-		if isMatchingSampleRun(line, sr) {
+		if isMatchingSampleRun(line, input) {
 			matchingLines = append(matchingLines, line)
 		}
 	}
@@ -87,7 +87,7 @@ func filterMatchingSampleRuns(lines []string, sr sampleRun) []string {
 	return matchingLines
 }
 
-func isMatchingSampleRun(line string, sr sampleRun) bool {
+func isMatchingSampleRun(line string, input *Sample) bool {
 	if line == "" {
 		return false
 	}
@@ -97,7 +97,7 @@ func isMatchingSampleRun(line string, sr sampleRun) bool {
 		return false
 	}
 
-	return fields[1] == sr.sampleID && fields[3] == sr.runID
+	return fields[1] == input.SampleID && fields[3] == input.RunID
 }
 
 func writeFilteredTSV(outPath string, filteredLines []string) error {

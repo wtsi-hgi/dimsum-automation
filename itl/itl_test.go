@@ -42,7 +42,7 @@ func TestITL(t *testing.T) {
 		t.Fatalf("Failed to get absolute path of testdata file: %v", err)
 	}
 
-	Convey("Given desired samples in an experiement in a library", t, func() {
+	Convey("Given desired samples in an experiment in a library", t, func() {
 		studyID := "study1"
 		runID1 := "run1"
 		runID2 := "run2"
@@ -88,15 +88,10 @@ func TestITL(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(itl, ShouldNotBeNil)
 			So(itl.studyID, ShouldEqual, studyID)
-			So(itl.sampleRuns, ShouldResemble, []sampleRun{
-				{sampleID: "sample1_id", runID: "run1"},
-				{sampleID: "sample1_id", runID: "run2"},
-				{sampleID: "sample2_id", runID: "run1"},
-			})
-			So(itl.SampleNameRuns(), ShouldResemble, []string{
-				"sample1_id.run1",
-				"sample1_id.run2",
-				"sample2_id.run1",
+			So(itl.Samples(), ShouldResemble, []*Sample{
+				{Sample: types.Sample{SampleID: "sample1_id", RunID: "run1"}},
+				{Sample: types.Sample{SampleID: "sample1_id", RunID: "run2"}},
+				{Sample: types.Sample{SampleID: "sample2_id", RunID: "run1"}},
 			})
 
 			cmd, tsvPath := itl.GenerateSamplesTSVCommand()
@@ -189,13 +184,9 @@ func TestITL(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(itl, ShouldNotBeNil)
 			So(itl.studyID, ShouldEqual, studyID)
-			So(itl.sampleRuns, ShouldResemble, []sampleRun{
-				{sampleID: "sample1_id", runID: "run1"},
-				{sampleID: "sample2_id", runID: "run1"},
-			})
-			So(itl.SampleNameRuns(), ShouldResemble, []string{
-				"sample1_id.run1",
-				"sample2_id.run1",
+			So(itl.Samples(), ShouldResemble, []*Sample{
+				{Sample: types.Sample{SampleID: "sample1_id", RunID: "run1"}},
+				{Sample: types.Sample{SampleID: "sample2_id", RunID: "run1"}},
 			})
 
 			fcs, err := itl.FilterSamplesTSV(testSamplesTSVPath)

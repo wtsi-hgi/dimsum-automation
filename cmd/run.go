@@ -115,7 +115,7 @@ will be skipped for that sample.
 			die(err)
 		}
 
-		if len(itl.SampleNameRuns()) == 0 {
+		if len(itl.Samples()) == 0 {
 			info("fastqs for these samples already exist in the output directory")
 
 			return
