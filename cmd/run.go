@@ -322,7 +322,7 @@ directory of the current working directory, or the working directory itself.
 
 		infof("created experiment design file: %s", experimentPath)
 
-		cmd, err := d.Command(design)
+		cmd, err := d.Command()
 		if err != nil {
 			die(err)
 		}

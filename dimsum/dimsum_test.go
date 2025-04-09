@@ -49,6 +49,7 @@ func TestDimsum(t *testing.T) {
 				RunID:               run,
 				Selection:           types.SelectionInput,
 				ExperimentReplicate: 1,
+				TechnicalReplicate:  1,
 				SelectionTime:       "0.5",
 				CellDensity:         "0.1",
 			},
@@ -58,18 +59,21 @@ func TestDimsum(t *testing.T) {
 				RunID:               run,
 				Selection:           types.SelectionOutput,
 				ExperimentReplicate: 2,
+				TechnicalReplicate:  1,
 				SelectionTime:       "0.6",
 				CellDensity:         "0.2",
 			},
 		}
 
+		barcodeIdentityPath := "barcode_identity.txt"
 		exp := &types.Experiment{
-			ExperimentID:     "exp",
-			WildtypeSequence: "wt",
-			MaxSubstitutions: 3,
-			Cutadapt5First:   "ACTG",
-			Cutadapt5Second:  "TCGA",
-			Samples:          testSamples,
+			ExperimentID:        "exp",
+			BarcodeIdentityPath: barcodeIdentityPath,
+			WildtypeSequence:    "wt",
+			MaxSubstitutions:    3,
+			Cutadapt5First:      "ACTG",
+			Cutadapt5Second:     "TCGA",
+			Samples:             testSamples,
 		}
 
 		Convey("You can generate an experiment design file", func() {
@@ -79,30 +83,32 @@ func TestDimsum(t *testing.T) {
 			So(err, ShouldBeNil)
 			So(design, ShouldResemble, ExperimentDesign{
 				Experiment: exp,
-				// {
-				// 	ID:              exp,
-				// 	SampleName:      sample1,
-				// 	Replicate:       1,
-				// 	Selection:       0,
-				// 	Pair1:           sample1 + "_id." + run + pair1FastqSuffix,
-				// 	Pair2:           sample1 + "_id." + run + pair2FastqSuffix,
-				// 	CellDensity:     0.1,
-				// 	Generations:     float32(1),
-				// 	SelectionTime:   0.5,
-				// 	LibraryMetaData: libMeta,
-				// },
-				// {
-				// 	ID:              exp,
-				// 	SampleName:      sample2,
-				// 	Replicate:       2,
-				// 	Selection:       1,
-				// 	Pair1:           sample2 + "_id." + run + pair1FastqSuffix,
-				// 	Pair2:           sample2 + "_id." + run + pair2FastqSuffix,
-				// 	CellDensity:     0.2,
-				// 	Generations:     float32(2),
-				// 	SelectionTime:   0.6,
-				// 	LibraryMetaData: libMeta,
-				// },
+				Samples: []*types.Sample{
+					{
+						SampleName:          sample1,
+						SampleID:            sample1 + "_id",
+						RunID:               run,
+						Selection:           types.SelectionInput,
+						ExperimentReplicate: 1,
+						TechnicalReplicate:  1,
+						SelectionTime:       "0.5",
+						CellDensity:         "0.1",
+						Pair1:               sample1 + "_id." + run + pair1FastqSuffix,
+						Pair2:               sample1 + "_id." + run + pair2FastqSuffix,
+					},
+					{
+						SampleName:          sample2,
+						SampleID:            sample2 + "_id",
+						RunID:               run,
+						Selection:           types.SelectionOutput,
+						ExperimentReplicate: 2,
+						TechnicalReplicate:  1,
+						SelectionTime:       "0.6",
+						CellDensity:         "0.2",
+						Pair1:               sample2 + "_id." + run + pair1FastqSuffix,
+						Pair2:               sample2 + "_id." + run + pair2FastqSuffix,
+					},
+				},
 			})
 			So(design.ExperimentID, ShouldEqual, exp.ExperimentID)
 
@@ -121,20 +127,24 @@ func TestDimsum(t *testing.T) {
 					"pair1\tpair2\tgenerations\tcell_density\tselection_time\n"+
 					"%s\t%d\t%d\t%s\t%d\t%s_id.run_1.fastq.gz\t%s_id.run_2.fastq.gz\t%d\t%s\t%s\n"+
 					"%s\t%d\t%d\t%s\t%d\t%s_id.run_1.fastq.gz\t%s_id.run_2.fastq.gz\t%d\t%s\t%s\n",
-				sample1, ts0.ExperimentReplicate, ts0.SelectionID(), ts0.SelectionReplicate(), 1, sample1, sample1, 1, ts0.CellDensity, ts0.SelectionTime,
-				sample2, ts1.ExperimentReplicate, ts1.SelectionID(), ts1.SelectionReplicate(), 1, sample2, sample2, 2, ts1.CellDensity, ts1.SelectionTime,
+				"input1", ts0.ExperimentReplicate, ts0.SelectionID(), ts0.SelectionReplicate(),
+				1, sample1, sample1, 1, ts0.CellDensity, ts0.SelectionTime,
+				"output2", ts1.ExperimentReplicate, ts1.SelectionID(), ts1.SelectionReplicate(),
+				1, sample2, sample2, 2, ts1.CellDensity, ts1.SelectionTime,
 			))
+
+			//TODO: proper test for generations value being correct for an
+			// output with a corresponding input of cell density other than 0.05
 
 			Convey("Then you can generate a dimsum command line", func() {
 				fastqDir := "/path/to/fastqs"
-				barcodeIdentityPath := "barcode_identity.txt"
 
 				dimsum := New(fastqDir, design)
 				So(dimsum, ShouldNotBeNil)
 
 				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/69b24c9009b4933a204a8d2aace78d566eb8b31b")
 
-				cmd, err := dimsum.Command(design)
+				cmd, err := dimsum.Command()
 				So(err, ShouldBeNil)
 
 				So(cmd, ShouldEqual, fmt.Sprintf(
@@ -144,7 +154,7 @@ func TestDimsum(t *testing.T) {
 						"--maxSubstitutions %d --mutagenesisType %s --retainIntermediateFiles %s "+
 						"--mixedSubstitutions %s --experimentDesignPairDuplicates %s "+
 						"--barcodeIdentityPath %s",
-					DimSumExe, fastqDir, DefaultFastqExtension, "TRUE", filepath.Base(designPath),
+					DimSumExe, fastqDir, DefaultFastqExtension, "T", filepath.Base(designPath),
 					exp.Cutadapt5First, exp.Cutadapt5Second,
 					DefaultCutAdaptMinLength, DefaultCutAdaptErrorRate,
 					DefaultVsearchMinQual, outputSubdir, dimsumProjectPrefix+exp.ExperimentID,
@@ -159,7 +169,8 @@ func TestDimsum(t *testing.T) {
 				dimsum = New(fastqDir, design)
 				So(dimsum, ShouldNotBeNil)
 
-				cmd, err = dimsum.Command(design)
+				exp.BarcodeIdentityPath = ""
+				cmd, err = dimsum.Command()
 				So(err, ShouldBeNil)
 				So(cmd, ShouldNotContainSubstring, "--barcodeIdentityPath")
 				So(dimsum.Key(testSamples), ShouldEqual, "exp/sample1.run,sample2.run/631c90f196443c203f4eeea856da242fafcc1793")

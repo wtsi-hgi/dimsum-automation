@@ -272,7 +272,6 @@ func (s *Sheets) getSampleMetaData( //nolint:funlen
 			ExperimentReplicate: c.ToInt(row[3]),
 			SelectionTime:       c.ToFloatString(row[4]),
 			CellDensity:         c.ToFloatString(row[5]),
-			CellDensityFloat:    c.ToFloat(row[5]),
 		}
 
 		exp := exps[expI]

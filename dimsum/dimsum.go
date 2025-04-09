@@ -35,6 +35,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/wtsi-hgi/dimsum-automation/itl"
 	"github.com/wtsi-hgi/dimsum-automation/types"
 )
 
@@ -74,29 +75,28 @@ const (
 	dimsumProjectPrefix = "dimsumRun_"
 )
 
-type Row struct {
-	types.Sample
-}
-
-type Rows []Row
-
 // ExperimentDesign represents a single experiment's metadata.
 type ExperimentDesign struct {
 	*types.Experiment
-	Rows
+	Samples []*types.Sample
 }
 
 // NewExperimentDesign creates an experiment design from the Experiment.
 func NewExperimentDesign(exp *types.Experiment) (ExperimentDesign, error) {
-	// fastqBasenamePrefix := itl.FastqBasenamePrefix(sample.SampleName, sample.RunID)
-	// Pair1:           fastqBasenamePrefix + itl.FastqPair1Suffix,
-	// Pair2:           fastqBasenamePrefix + itl.FastqPair2Suffix,
-	// Generations:     sample.Generations(),
+	rows := make([]*types.Sample, 0, len(exp.Samples))
 
-	// TODO: form rows from the samples in exp
+	for _, sample := range exp.Samples {
+		s := *sample
+		fastqBasenamePrefix := itl.FastqBasenamePrefix(s.SampleID, s.RunID)
+		s.Pair1 = fastqBasenamePrefix + itl.FastqPair1Suffix
+		s.Pair2 = fastqBasenamePrefix + itl.FastqPair2Suffix
+
+		rows = append(rows, &s)
+	}
 
 	return ExperimentDesign{
 		Experiment: exp,
+		Samples:    rows,
 	}, nil
 }
 
@@ -115,10 +115,11 @@ func (ed ExperimentDesign) Write(dir string) (string, error) {
 		return "", err
 	}
 
-	for _, row := range ed.Rows {
+	for _, row := range ed.Samples {
 		line := fmt.Sprintf("%s\t%d\t%d\t%s\t%d\t%s\t%s\t%.0f\t%s\t%s\n",
-			row.DimsumSampleName(), row.ExperimentReplicate, row.SelectionID(), row.SelectionReplicate(), 1, //TODO: technical replicate
-			"TODO: Pair1", "TODO: Pair2", row.Generations(), row.CellDensity, row.SelectionTime)
+			row.DimsumSampleName(), row.ExperimentReplicate, row.SelectionID(),
+			row.SelectionReplicate(), row.TechnicalReplicate, row.Pair1, row.Pair2,
+			row.Generations(), row.CellDensity, row.SelectionTime)
 
 		if _, err = file.WriteString(line); err != nil {
 			return "", err
@@ -134,10 +135,8 @@ func experimentDesignPath(dir, experiment string) string {
 
 // DimSum represents the parameters for running DiMSum. All parameters are
 type DimSum struct {
-	// Required parameters
+	ed                      ExperimentDesign
 	FastqDir                string // Directory containing FASTQ files
-	BarcodeIdentityPath     string // Path to the barcode identity file; can be blank
-	Experiment              string // Name of the experiment
 	VSearchMinQual          int    // Minimum quality score for VSearch
 	StartStage              int    // Stage to start the analysis from
 	FitnessMinInputCountAny int    // Minimum input count for any fitness calculation
@@ -168,10 +167,9 @@ func New(fastqDir string, ed ExperimentDesign) DimSum {
 	}
 
 	return DimSum{
-		FastqDir:            fastqDir,
-		BarcodeIdentityPath: ed.Experiment.BarcodeIdentityPath,
-		Experiment:          ed.Experiment.ExperimentID,
-		MaxSubstitutions:    maxSubs,
+		ed:               ed,
+		FastqDir:         fastqDir,
+		MaxSubstitutions: maxSubs,
 
 		// TODO: use exp values, and default to these Defaults if not set, or
 		// perhaps easier, just set the default values in sheets pkg.
@@ -204,7 +202,7 @@ func (d *DimSum) Key(samples []*types.Sample) string {
 
 	// TODO: include more/all of the properties in the key
 	combinedProps := fmt.Sprintf("%s_%d_%d_%d_%d_%d_%.2f_%d_%t_%s_%t",
-		d.BarcodeIdentityPath, d.VSearchMinQual, d.StartStage,
+		d.ed.BarcodeIdentityPath, d.VSearchMinQual, d.StartStage,
 		d.FitnessMinInputCountAny, d.FitnessMinInputCountAll,
 		d.CutAdaptMinLength, d.CutAdaptErrorRate, d.MaxSubstitutions,
 		d.MixedSubstitutions, d.MutagenesisType, d.DesignPairDuplicates)
@@ -213,7 +211,7 @@ func (d *DimSum) Key(samples []*types.Sample) string {
 	hasher.Write([]byte(combinedProps))
 	encodedProps := hex.EncodeToString(hasher.Sum(nil))
 
-	return filepath.Join(d.Experiment, strings.Join(sampleInfo, ","), encodedProps)
+	return filepath.Join(d.ed.Experiment.ExperimentID, strings.Join(sampleInfo, ","), encodedProps)
 }
 
 // TODO: make Key be an explicit initial "temp" output path method that returns
@@ -227,36 +225,43 @@ func (d *DimSum) Key(samples []*types.Sample) string {
 //
 // Parameters:
 //   - ed: ExperimentDesign with all experiment details.
-func (d *DimSum) Command(ed ExperimentDesign) (string, error) {
+func (d *DimSum) Command() (string, error) {
 	if err := os.MkdirAll(outputSubdir, 0755); err != nil {
 		return "", err
 	}
 
-	libMeta := ed.Experiment
+	libMeta := d.ed.Experiment
 
 	cmd := fmt.Sprintf("%s -i %s -l %s -g %s -e %s --cutadapt5First %s --cutadapt5Second %s "+
 		"-n %d -a %.2f -q %d -o %s -p %s -s %d -w %s -c %d "+
 		"--fitnessMinInputCountAny %d --fitnessMinInputCountAll %d "+
 		"--maxSubstitutions %d --mutagenesisType %s --retainIntermediateFiles %s "+
 		"--mixedSubstitutions %s --experimentDesignPairDuplicates %s",
-		DimSumExe, d.FastqDir, d.FastqExtension, "T", experimentDesignPath(".", d.Experiment),
+		DimSumExe, d.FastqDir, d.FastqExtension, "T", experimentDesignPath(".", d.ed.ExperimentID),
 		libMeta.Cutadapt5First,
 		libMeta.Cutadapt5Second,
 		d.CutAdaptMinLength, d.CutAdaptErrorRate,
-		d.VSearchMinQual, outputSubdir, dimsumProjectPrefix+d.Experiment,
+		d.VSearchMinQual, outputSubdir, dimsumProjectPrefix+d.ed.ExperimentID,
 		d.StartStage, libMeta.WildtypeSequence, d.Cores, d.FitnessMinInputCountAny,
 		d.FitnessMinInputCountAll, d.MaxSubstitutions,
-		d.MutagenesisType, "T", "T", "T",
-		//TODO: use libMeta values for these, converting the bools to "T" or "F"
-		// libMeta.MixedSubstitutions,
-		// libMeta.ExperimentDesignPairDuplicates,
+		d.MutagenesisType, "T", boolToLetter(libMeta.MixedSubstitutions),
+		boolToLetter(libMeta.ExperimentDesignPairDuplicates),
+		//TODO: all other dimsum params on libMeta
 	)
 
-	if d.BarcodeIdentityPath != "" {
-		cmd += " --barcodeIdentityPath " + d.BarcodeIdentityPath
+	if d.ed.BarcodeIdentityPath != "" {
+		cmd += " --barcodeIdentityPath " + d.ed.BarcodeIdentityPath
 	}
 
 	return cmd, nil
+}
+
+func boolToLetter(b bool) string {
+	if b {
+		return "T"
+	}
+
+	return "F"
 }
 
 // TODO: maybe DimSum struct replaces ExperimentDesign struct

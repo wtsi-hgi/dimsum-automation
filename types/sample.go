@@ -29,6 +29,7 @@ package types
 import (
 	"fmt"
 	"math"
+	"strconv"
 )
 
 const (
@@ -66,7 +67,8 @@ type Sample struct {
 	TechnicalReplicate  int
 	SelectionTime       string
 	CellDensity         string
-	CellDensityFloat    float32
+	Pair1               string
+	Pair2               string
 }
 
 // Key returns a unique key for this sample, which is the SampleName and RunID
@@ -108,14 +110,19 @@ func (s *Sample) SelectionReplicate() string {
 // Generations is the amount of times the cells have divided between input and
 // output, ie. log2(output cell density / input cell density).
 func (s *Sample) Generations() float32 {
-	if s.CellDensityFloat == 0 || s.Selection == SelectionInput {
+	if s.CellDensity == "" || s.Selection == SelectionInput {
+		return 1
+	}
+
+	cellDensity, err := strconv.ParseFloat(s.CellDensity, 32)
+	if err != nil {
 		return 0
 	}
 
 	// TODO: This is a bit of a hack, we should be using the input cell density
 	// from the corresponding input sample, not generationsMin
 
-	return float32(math.Log2(float64(s.CellDensityFloat / generationsMin)))
+	return float32(math.Log2(float64(cellDensity / generationsMin)))
 }
 
 // Clone returns a new Sample with the same values as the original.

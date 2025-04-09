@@ -100,7 +100,7 @@ func (fc *FastqCreator) MoveFastqFiles() error {
 // SampleID and RunID. Appending the suffixes FastqPair1Suffix and
 // FastqPair2Suffix will give the full names of the fastq files.
 func FastqBasenamePrefix(sampleID, runID string) string {
-	ts := &types.Sample{SampleID: sampleID, RunID: runID}
+	ts := &types.Sample{SampleName: sampleID, RunID: runID}
 
 	return ts.Key()
 }
