@@ -80,7 +80,28 @@ func (m *mockMLWH) Close() error {
 type mockSheets struct{ smeta types.Libraries }
 
 func (m *mockSheets) DimSumMetaData(sheetID string) (types.Libraries, error) {
-	return m.smeta, nil
+	libs := make(types.Libraries, len(m.smeta))
+
+	for i, lib := range m.smeta {
+		clonedExperiments := make([]*types.Experiment, len(lib.Experiments))
+
+		for j, exp := range lib.Experiments {
+			clonedSamples := make([]*types.Sample, len(exp.Samples))
+
+			for k, sample := range exp.Samples {
+				clonedSamples[k] = sample.Clone()
+			}
+
+			clonedExperiments[j] = exp.Clone(clonedSamples)
+		}
+
+		clonedLib := *lib
+		clonedLib.Experiments = clonedExperiments
+
+		libs[i] = &clonedLib
+	}
+
+	return libs, nil
 }
 
 func TestSamplesMock(t *testing.T) {
@@ -90,9 +111,19 @@ func TestSamplesMock(t *testing.T) {
 				StudyID:   "studyID1",
 				StudyName: "study1",
 				Sample: types.Sample{
-					SampleID:   "sampleID1",
+					SampleID:   "sampleID1a",
 					SampleName: "sample1",
-					RunID:      "run1",
+					RunID:      "run1a",
+					ManualQC:   "1",
+				},
+			},
+			{
+				StudyID:   "studyID1",
+				StudyName: "study1",
+				Sample: types.Sample{
+					SampleID:   "sampleID1b",
+					SampleName: "sample1",
+					RunID:      "run1b",
 					ManualQC:   "1",
 				},
 			},
@@ -103,36 +134,48 @@ func TestSamplesMock(t *testing.T) {
 					SampleID:   "sampleID2",
 					SampleName: "sample2",
 					RunID:      "run2",
+					ManualQC:   "1",
+				},
+			},
+			{
+				StudyID:   "studyID1",
+				StudyName: "study1",
+				Sample: types.Sample{
+					SampleID:   "sampleID3",
+					SampleName: "sample3",
+					RunID:      "run3",
+					ManualQC:   "1",
+				},
+			},
+			{
+				StudyID:   "studyID1",
+				StudyName: "study1",
+				Sample: types.Sample{
+					SampleID:   "sampleID4",
+					SampleName: "sample4",
+					RunID:      "run4",
+					ManualQC:   "0",
 				},
 			},
 			{
 				StudyID:   "studyID2",
 				StudyName: "study2",
 				Sample: types.Sample{
-					SampleID:   "sampleID3",
-					SampleName: "sample3",
-					RunID:      "run3",
-				},
-			},
-			{
-				StudyID:   "studyID3",
-				StudyName: "study3",
-				Sample: types.Sample{
-					SampleID:   "sampleID4",
-					SampleName: "sample4",
-					RunID:      "run4",
+					SampleID:   "sampleID5",
+					SampleName: "sample5",
+					RunID:      "run5",
+					ManualQC:   "1",
 				},
 			},
 		}
 		mlwhQueryTime := 100 * time.Millisecond
 		mclient := &mockMLWH{msamples: msamples, queryTime: mlwhQueryTime}
 
-		exp := "exp"
-		lib := &types.Library{
-			LibraryID: "lib",
+		lib1 := &types.Library{
+			LibraryID: "lib1",
 			Experiments: []*types.Experiment{
 				{
-					ExperimentID: exp,
+					ExperimentID: "exp1",
 					Samples: []*types.Sample{
 						{
 							SampleName:          "sample1",
@@ -142,20 +185,39 @@ func TestSamplesMock(t *testing.T) {
 							SampleName:          "sample3",
 							ExperimentReplicate: 2,
 						},
+					},
+				},
+				{
+					ExperimentID: "exp2",
+					Samples: []*types.Sample{
 						{
 							SampleName:          "sample4",
 							ExperimentReplicate: 3,
 						},
 						{
-							SampleName:          "sample5",
+							SampleName:          "sample6",
 							ExperimentReplicate: 4,
 						},
 					},
 				},
 			},
 		}
+		lib2 := &types.Library{
+			LibraryID: "lib2",
+			Experiments: []*types.Experiment{
+				{
+					ExperimentID: "exp3",
+					Samples: []*types.Sample{
+						{
+							SampleName:          "sample5",
+							ExperimentReplicate: 5,
+						},
+					},
+				},
+			},
+		}
 
-		sclient := &mockSheets{smeta: []*types.Library{lib}}
+		sclient := &mockSheets{smeta: []*types.Library{lib1, lib2}}
 
 		allowedAge := 2 * mlwhQueryTime
 		c := New(mclient, sclient, ClientOptions{
@@ -171,31 +233,77 @@ func TestSamplesMock(t *testing.T) {
 
 		Convey("You can get info about samples belonging to a given sponsor", func() {
 			start := time.Now()
+
 			mergedLibs, err := c.ForSponsor(sponsor)
 			So(err, ShouldBeNil)
-			So(len(mergedLibs), ShouldEqual, 0)
-			mergedLib := mergedLibs[0]
-			So(mergedLib, ShouldResemble, &types.Library{
-				LibraryID: "lib",
-				Experiments: []*types.Experiment{
-					{
-						ExperimentID: exp,
-						Samples: []*types.Sample{
-							{
-								SampleName:          "sample1",
-								ExperimentReplicate: 1,
+			So(len(mergedLibs), ShouldEqual, 2)
+
+			So(mergedLibs, ShouldResemble, types.Libraries{
+				{
+					StudyID:   "studyID1",
+					StudyName: "study1",
+					LibraryID: "lib1",
+					Experiments: []*types.Experiment{
+						{
+							ExperimentID: "exp1",
+							Samples: []*types.Sample{
+								{
+									SampleName:          "sample1",
+									SampleID:            "sampleID1a",
+									RunID:               "run1a",
+									ExperimentReplicate: 1,
+									TechnicalReplicate:  1,
+									ManualQC:            "1",
+								},
+								{
+									SampleName:          "sample1",
+									SampleID:            "sampleID1b",
+									RunID:               "run1b",
+									ExperimentReplicate: 1,
+									TechnicalReplicate:  2,
+									ManualQC:            "1",
+								},
+								{
+									SampleName:          "sample3",
+									SampleID:            "sampleID3",
+									RunID:               "run3",
+									ExperimentReplicate: 2,
+									TechnicalReplicate:  1,
+									ManualQC:            "1",
+								},
 							},
-							{
-								SampleName:          "sample3",
-								ExperimentReplicate: 2,
+						},
+						{
+							ExperimentID: "exp2",
+							Samples: []*types.Sample{
+								{
+									SampleName:          "sample4",
+									SampleID:            "sampleID4",
+									RunID:               "run4",
+									ExperimentReplicate: 3,
+									TechnicalReplicate:  1,
+									ManualQC:            "0",
+								},
 							},
-							{
-								SampleName:          "sample4",
-								ExperimentReplicate: 3,
-							},
-							{
-								SampleName:          "sample5",
-								ExperimentReplicate: 4,
+						},
+					},
+				},
+				{
+					StudyID:   "studyID2",
+					StudyName: "study2",
+					LibraryID: "lib2",
+					Experiments: []*types.Experiment{
+						{
+							ExperimentID: "exp3",
+							Samples: []*types.Sample{
+								{
+									SampleName:          "sample5",
+									SampleID:            "sampleID5",
+									RunID:               "run5",
+									ExperimentReplicate: 5,
+									TechnicalReplicate:  1,
+									ManualQC:            "1",
+								},
 							},
 						},
 					},
@@ -227,14 +335,20 @@ func TestSamplesMock(t *testing.T) {
 					So(err, ShouldBeNil)
 					So(len(freshLibs), ShouldEqual, 1)
 					So(freshLibs[0], ShouldResemble, &types.Library{
-						LibraryID: "lib",
+						StudyID:   "studyID1",
+						StudyName: "study1",
+						LibraryID: "lib1",
 						Experiments: []*types.Experiment{
 							{
-								ExperimentID: exp,
+								ExperimentID: "exp1",
 								Samples: []*types.Sample{
 									{
 										SampleName:          "sample1",
+										SampleID:            "sampleID1a",
+										RunID:               "run1a",
 										ExperimentReplicate: 1,
+										TechnicalReplicate:  1,
+										ManualQC:            "1",
 									},
 								},
 							},
@@ -255,7 +369,7 @@ func TestSamplesMock(t *testing.T) {
 
 					freshLibs, err := c.ForSponsor(sponsor)
 					So(err, ShouldBeNil)
-					So(len(freshLibs), ShouldEqual, 3)
+					So(len(freshLibs), ShouldEqual, 2)
 					So(c.Err(), ShouldEqual, errMock)
 					So(c.LastPrefetchSuccess(), ShouldHappenBefore, createTime)
 				})
@@ -266,14 +380,20 @@ func TestSamplesMock(t *testing.T) {
 					{SampleName: msamples[0].SampleName, RunID: msamples[0].RunID},
 					{SampleName: msamples[2].SampleName, RunID: msamples[2].RunID},
 				})
+				So(err, ShouldEqual, types.ErrNotAllSamplesInSameExperiment)
+
+				subset, err = mergedLibs.Subset([]*types.Sample{
+					{SampleName: msamples[0].SampleName, RunID: msamples[0].RunID},
+					{SampleName: msamples[3].SampleName, RunID: msamples[3].RunID},
+				})
 				So(err, ShouldBeNil)
 
 				samples := subset.Experiments[0].Samples
 				So(len(samples), ShouldEqual, 2)
-				So(samples[0].DimsumSampleName, ShouldEqual, msamples[0].SampleName)
+				So(samples[0].SampleName, ShouldEqual, msamples[0].SampleName)
 				So(samples[0].RunID, ShouldEqual, msamples[0].RunID)
-				So(samples[1].DimsumSampleName, ShouldEqual, msamples[2].SampleName)
-				So(samples[1].RunID, ShouldEqual, msamples[2].RunID)
+				So(samples[1].SampleName, ShouldEqual, msamples[3].SampleName)
+				So(samples[1].RunID, ShouldEqual, msamples[3].RunID)
 			})
 		})
 	})
@@ -327,10 +447,12 @@ func TestSamplesReal(t *testing.T) {
 
 			sample := exp.Samples[0]
 			So(sample.SampleName, ShouldNotBeBlank)
-			So(sample.DimsumSampleName, ShouldNotBeBlank)
+			So(sample.SampleID, ShouldNotBeBlank)
 			So(sample.RunID, ShouldNotBeBlank)
-			So(sample.ManualQC, ShouldBeTrue)
+			So(sample.ManualQC, ShouldNotBeBlank)
+			So(string(sample.Selection), ShouldNotBeBlank)
 			So(sample.ExperimentReplicate, ShouldBeGreaterThan, 0)
+			So(sample.TechnicalReplicate, ShouldBeGreaterThan, 0)
 			So(sample.CellDensity, ShouldNotBeBlank)
 
 			So(time.Since(start), ShouldBeGreaterThan, 100*time.Millisecond)

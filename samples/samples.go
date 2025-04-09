@@ -39,9 +39,10 @@ type Error string
 func (e Error) Error() string { return string(e) }
 
 const (
-	ErrInvalidNameRun   = Error("both name and run must be set")
-	ErrNoNameRun        = Error("no name and run provided")
-	ErrNameRunsNotFound = Error("no samples found for given names and runs")
+	ErrInvalidNameRun              = Error("both name and run must be set")
+	ErrNoNameRun                   = Error("no name and run provided")
+	ErrNameRunsNotFound            = Error("no samples found for given names and runs")
+	ErrExpSamplesInMultipleStudies = Error("experiment has samples in multiple studies")
 )
 
 type MLWHClient interface {
@@ -238,33 +239,72 @@ func (c *Client) freshForSponsorQuery(sponsor string) (types.Libraries, error) {
 		return nil, err
 	}
 
-	mlwhSampleLookup := make(map[string]int, len(samples))
+	mlwhSampleLookup := make(map[string][]int, len(samples))
 
 	for i, s := range samples {
-		mlwhSampleLookup[s.SampleName] = i
+		indexes, ok := mlwhSampleLookup[s.SampleName]
+		if !ok {
+			indexes = make([]int, 0, 1)
+		}
+
+		indexes = append(indexes, i)
+		mlwhSampleLookup[s.SampleName] = indexes
 	}
 
-	// TODO: apply mlwh sample and study metadata to libs, remove any libs and
-	// experiments that don't have mlwh samples
+	filteredLibs := make(types.Libraries, 0, len(libs))
 
 	for _, lib := range libs {
-		// goodExps := make([]*sheets.Experiment, 0, len(lib.Experiments))
+		goodExps := make([]*types.Experiment, 0, len(lib.Experiments))
+		studies := make(map[string]string, 1)
 
 		for _, exp := range lib.Experiments {
-			// goodSamples := make([]*sheets.Sample, 0, len(exp.Samples))
+			goodSamples := make([]*types.Sample, 0, len(exp.Samples))
 
 			for _, sample := range exp.Samples {
-				_, ok := mlwhSampleLookup[sample.SampleName]
+				indexes, ok := mlwhSampleLookup[sample.SampleName]
 				if !ok {
 					continue
 				}
 
-				// mlwhSample := samples[i]
+				for i, index := range indexes {
+					mlwhSample := samples[index]
+					studies[mlwhSample.StudyID] = mlwhSample.StudyName
+
+					thisSample := sample.Clone()
+					thisSample.SampleID = mlwhSample.SampleID
+					thisSample.RunID = mlwhSample.RunID
+					thisSample.ManualQC = mlwhSample.ManualQC
+					thisSample.TechnicalReplicate = i + 1
+
+					goodSamples = append(goodSamples, thisSample)
+				}
 			}
+
+			if len(goodSamples) > 0 {
+				exp.Samples = goodSamples
+				goodExps = append(goodExps, exp)
+			}
+		}
+
+		if len(goodExps) > 0 {
+			if len(studies) != 1 {
+				return nil, ErrExpSamplesInMultipleStudies
+			}
+
+			var sid, sname string
+
+			for k, v := range studies {
+				sid, sname = k, v
+			}
+
+			lib.StudyID = sid
+			lib.StudyName = sname
+			lib.Experiments = goodExps
+			filteredLibs = append(filteredLibs, lib)
 		}
 	}
 
-	return libs, nil
+	return filteredLibs, nil
 }
 
 // Close closes database connections and stops prefetching.
